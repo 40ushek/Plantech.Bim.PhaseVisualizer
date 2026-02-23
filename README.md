@@ -37,3 +37,7 @@ Detailed documentation and behavior notes:
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_PHASE_VISUALIZER.md`
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_APPLY_RULES.md`
 
+Repository-level docs:
+- `CONTRIBUTING.md`
+- `CHANGELOG.md`
+- `LICENSE`
