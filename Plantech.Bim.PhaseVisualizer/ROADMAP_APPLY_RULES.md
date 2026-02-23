@@ -91,6 +91,53 @@ String column example:
 }
 ```
 
+## Examples from Current Working Config
+
+The current minimal macro-like config in use:
+- `phase_number`
+- `phase_name`
+- `exclude_gratings`
+- `exclude_existing`
+- `object_count`
+
+`exclude_gratings` (macro-equivalent via `ASSEMBLY.MAINPART.PROFILE`):
+
+```json
+{
+  "key": "exclude_gratings",
+  "label": "Exclude Gratings",
+  "type": "Boolean",
+  "editable": true,
+  "targetAttribute": "exclude_gratings",
+  "applyRule": {
+    "onTrue": {
+      "field": "ASSEMBLY.MAINPART.PROFILE",
+      "op": "notStartsWith",
+      "value": "GIRO"
+    }
+  }
+}
+```
+
+`exclude_existing` (macro-equivalent via `PT_INFO_BESTAND != 1`):
+
+```json
+{
+  "key": "exclude_existing",
+  "label": "Exclude Existing",
+  "type": "Boolean",
+  "editable": true,
+  "targetAttribute": "exclude_existing",
+  "applyRule": {
+    "onTrue": {
+      "field": "PT_INFO_BESTAND",
+      "op": "neq",
+      "value": 1
+    }
+  }
+}
+```
+
 ## Rule Semantics
 
 Boolean columns:
