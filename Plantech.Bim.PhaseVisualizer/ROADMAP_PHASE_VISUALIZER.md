@@ -1,0 +1,147 @@
+# ROADMAP: Phase Visualizer
+
+## Current State (2026-02-23)
+
+Implemented:
+- Dynamic WPF phase table from JSON config.
+- Two UI modes:
+  - host window
+  - Tekla plugin window (`InputObjectDependency.NOT_DEPENDENT`) with shared `PhaseVisualizerView`.
+- Tekla-native filtering via generated `OBJECT_GROUP_VIEW` (`PT_SubsystemSelection`).
+- Fast phase loading:
+  - phases from `model.GetPhases()`
+  - per-phase object count via `GetObjectsByFilter(...).GetSize()`
+  - no full-object scan in default mode.
+- Conditional attribute scan only when model attributes are required.
+- Toggle: show all phases vs only phases with objects.
+- ViewModel keeps cached full-phase context; `Show All Phases` switch does not force repeated heavy model reads each toggle.
+- State and presets persisted in `<ModelPath>/attributes/phase-visualizer.state.json`.
+- Config search path migrated to:
+  1. `<ModelPath>/.plantech/phase-visualizer.json`
+  2. `<ExtensionRoot>/.plantech/phase-visualizer.json`
+  3. embedded defaults.
+- Logging configured to `.plantech/phase-visualizer.log` via `PhaseVisualizerLogConfigurator`.
+- Apply diagnostics are available both in UI status and logs.
+- Apply now returns structured result with failure reason/details (`PhaseApplyResult`), and UI status is mapped from explicit failure reason.
+- Apply criteria collection extracted from ViewModel into `UI/PhaseSelectionBuilder.cs`.
+- Config-driven `applyRule` conditions introduced for editable columns (with legacy compatibility mapping).
+  Detailed rollout/status is tracked in `ROADMAP_APPLY_RULES.md`.
+- Namespace simplified to `Plantech.Bim.PhaseVisualizer.*`.
+
+## Architecture (Locked)
+
+Decision:
+- Model columns are explicit: `objectType + attribute`.
+- Editable criteria columns are explicit: `editable: true` plus target mapping.
+- No semantic `source` routing (`input.profile`, `input.material`, etc.).
+
+Rationale:
+- Removes per-attribute hardcode.
+- Removes column-name matching logic.
+- New filterable columns can be added by config only.
+
+Current editable schema:
+- `editable: true`
+- For model-targeted filters: `targetObjectType + targetAttribute`
+- For built-in criteria flags: `targetAttribute` only (for example `exclude_gratings`, `exclude_existing`).
+
+## Milestone Status
+
+### M1 - Expression Builder Extraction
+Status: DONE
+
+### M2 - Typed Operator Model (Config-Driven)
+Status: DONE
+
+### M3 - Rule Validation and Diagnostics
+Status: DONE
+
+### M4 - Presets UX
+Status: DONE
+
+### M5 - Source Mapping and Config Strictness
+Status: DONE
+
+Done:
+- Legacy semantic sources rejected by validator for model columns.
+- Resolver uses explicit object/attribute mapping.
+- `.plantech` config path introduced for model and extension.
+
+### M6 - Hardening and Test Coverage
+Status: TODO
+
+Planned:
+- Integration checks for phase add/remove/rename.
+- Recovery checks for malformed state/config.
+- Regression coverage for expression generation.
+- Performance checks on large models.
+
+### M7 - Universal Editable Criteria (No Attribute Hardcode)
+Status: DONE
+
+Done:
+- `editable` flag added to column schema.
+- ViewModel no longer depends on `input.*` or fixed column keys for normal attribute filters.
+- Apply path now processes all editable columns with `targetObjectType + targetAttribute`.
+- `material` (and other same-shape attributes) works without code changes.
+
+### M8 - Typed Editable Values and Operation Semantics
+Status: TODO
+
+Planned:
+- Expand generic builder for typed editable filters beyond string-equivalent flow where needed.
+- Map boolean/number editable values to explicit Tekla operators where target supports it.
+- Add config-level per-column operation policy for editable targets.
+
+### M9 - Observability and Apply Diagnostics
+Status: DONE
+
+Done:
+- Log file initialization and write path resolved from effective config directory.
+- Apply chain emits diagnostics (`ShowOnly requested/result`, filter apply start/finish, expression build count).
+- UI shows explicit failure status (`Apply failed...`) when apply returns `false`.
+
+### M11 - Model Scope vs View Scope Separation
+Status: TODO
+
+Planned:
+- Split data query scope from visualization scope explicitly.
+- Keep object/phase search and counts model-wide (view-independent).
+- Keep visualization/apply as view-level operation on active/visible view.
+- Avoid result drift caused by view settings when user expects global model behavior.
+
+### M15 - ApplyRule Config-Driven Conditions
+Status: PARTIAL
+
+Done:
+- `applyRule` schema + pass-through + validator + builder execution are implemented.
+- Legacy alias mapping for `booleanMode` and `exclude_existing` is implemented.
+
+Remaining:
+- Move `exclude_gratings` special-case to fully declarative legacy mapping.
+- Add focused runtime regression checks for mixed rule sets (`applyRule` + legacy configs).
+
+## Known Behavior / Known Limits
+
+- `Count` is model-level per-phase count (phase filter + `GetSize()`), not "visible-only in current view". Values can differ from objects currently visible in view windows.
+- `Apply` requires an active view or at least one visible view in Tekla; otherwise apply returns `false`.
+- Attribute scan path for model columns currently uses visible views (`GetVisibleViews` + `GetObjectsByBoundingBox` fallback to active view), so some table values can still be view-dependent.
+- In Tekla version mismatch scenarios (for example plugin built with TS2021 API and loaded in TS2025), active-view access can fail at runtime; this is now visible in logs via structured apply failure details.
+
+Note:
+- Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
+
+## Guiding Principles
+
+- Keep filtering Tekla-native; avoid full in-memory filtering.
+- Keep config and runtime state separate:
+  - `phase-visualizer.json` = schema/layout/targets
+  - `phase-visualizer.state.json` = user row values and presets.
+- Bind persisted row state by `PhaseNumber` (phase name is not stable).
+
+## Next Recommended Step
+
+1. Complete **M15 remaining items** (declarative `exclude_gratings`, mixed-rule regression checks).
+2. Execute **M11 model-scope query vs view-scope visualization split** to remove view-driven result ambiguity.
+3. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
+4. Execute **M8 typed editable operations** if priority remains unchanged.

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /d/repos/Plantech/src log --oneline -15)",
+      "WebFetch(domain:developer.tekla.com)",
+      "Bash(dotnet build:*)"
+    ]
+  }
+}

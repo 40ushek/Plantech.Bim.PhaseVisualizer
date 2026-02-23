@@ -1,0 +1,116 @@
+<UserControl
+    x:Class="Plantech.Bim.PhaseVisualizer.UI.PhaseVisualizerView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel
+            Grid.Row="0"
+            Margin="0,0,0,8">
+            <DockPanel Margin="0,0,0,6">
+                <TextBlock
+                    DockPanel.Dock="Left"
+                    VerticalAlignment="Center"
+                    FontSize="13"
+                    FontWeight="SemiBold"
+                    Text="{Binding StatusText}" />
+                <StackPanel
+                    DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+                    <ToggleButton
+                        x:Name="SearchScopeToggle"
+                        Width="170"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Content="Search: Tekla Model"
+                        IsChecked="{Binding UseVisibleViewsForSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Checked="SearchScopeToggle_Changed"
+                        Unchecked="SearchScopeToggle_Changed" />
+                    <ToggleButton
+                        x:Name="ShowAllPhasesToggle"
+                        Width="150"
+                        VerticalAlignment="Center"
+                        Content="Show All Phases"
+                        IsChecked="{Binding ShowAllPhases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        Checked="ShowAllPhasesToggle_Changed"
+                        Unchecked="ShowAllPhasesToggle_Changed" />
+                </StackPanel>
+            </DockPanel>
+
+            <DockPanel>
+                <TextBlock
+                    DockPanel.Dock="Left"
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    Text="Preset:" />
+                <Button
+                    DockPanel.Dock="Right"
+                    Width="70"
+                    Margin="6,0,0,0"
+                    Click="DeletePreset_Click"
+                    Content="Delete" />
+                <Button
+                    DockPanel.Dock="Right"
+                    Width="70"
+                    Margin="6,0,0,0"
+                    Click="SavePreset_Click"
+                    Content="Save" />
+                <Button
+                    DockPanel.Dock="Right"
+                    Width="70"
+                    Margin="6,0,0,0"
+                    Click="LoadPreset_Click"
+                    Content="Load" />
+                <ComboBox
+                    x:Name="PresetNameComboBox"
+                    MinWidth="220"
+                    MaxWidth="380"
+                    VerticalAlignment="Center"
+                    IsEditable="True"
+                    ItemsSource="{Binding PresetNames}"
+                    Text="{Binding PresetName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+        </StackPanel>
+
+        <DataGrid
+            x:Name="RowsGrid"
+            Grid.Row="1"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            IsReadOnly="False"
+            SelectionMode="Extended"
+            SelectionUnit="FullRow" />
+
+        <StackPanel
+            Grid.Row="2"
+            Margin="0,10,0,0"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <Button
+                Width="100"
+                Margin="0,0,8,0"
+                Click="OpenLog_Click"
+                Content="Open Log" />
+            <Button
+                Width="100"
+                Margin="0,0,8,0"
+                Click="Refresh_Click"
+                Content="Refresh" />
+            <Button
+                Width="100"
+                Margin="0,0,8,0"
+                Click="Apply_Click"
+                Content="Apply" />
+            <Button
+                Width="100"
+                Click="Close_Click"
+                Content="Close" />
+        </StackPanel>
+    </Grid>
+</UserControl>

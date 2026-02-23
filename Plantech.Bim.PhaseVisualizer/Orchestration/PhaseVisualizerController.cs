@@ -1,0 +1,239 @@
+using Plantech.Bim.PhaseVisualizer.Common;
+using Plantech.Bim.PhaseVisualizer.Configuration;
+using Plantech.Bim.PhaseVisualizer.Contracts;
+using Plantech.Bim.PhaseVisualizer.Domain;
+using Plantech.Bim.PhaseVisualizer.Services;
+using Serilog;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+
+namespace Plantech.Bim.PhaseVisualizer.Orchestration;
+
+internal sealed class PhaseVisualizerController
+{
+    private const string ConfigDirectoryName = ".plantech";
+    private const string StateFileName = "phase-visualizer.state.json";
+
+    private readonly PhaseTableConfigLoader _configProvider;
+    private readonly TeklaPhaseDataProvider _dataProvider;
+    private readonly PhaseTableBuilder _tableBuilder;
+    private readonly IPhaseActionExecutor _actionExecutor;
+
+    public PhaseVisualizerController()
+        : this(
+            new PhaseTableConfigLoader(),
+            new TeklaPhaseDataProvider(),
+            new PhaseTableBuilder(),
+            new PhaseActionExecutor())
+    {
+    }
+
+    public PhaseVisualizerController(
+        PhaseTableConfigLoader configProvider,
+        TeklaPhaseDataProvider dataProvider,
+        PhaseTableBuilder tableBuilder,
+        IPhaseActionExecutor actionExecutor)
+    {
+        _configProvider = configProvider ?? throw new ArgumentNullException(nameof(configProvider));
+        _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
+        _tableBuilder = tableBuilder ?? throw new ArgumentNullException(nameof(tableBuilder));
+        _actionExecutor = actionExecutor ?? throw new ArgumentNullException(nameof(actionExecutor));
+    }
+
+    public IPhaseActionExecutor ActionExecutor => _actionExecutor;
+
+    public string ResolveStateFilePath(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        return ResolveContextPathsFromTekla(teklaContext, log).StateFilePath;
+    }
+
+    public string ResolveEffectiveConfigDirectory(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
+        return _configProvider.ResolveEffectiveConfigDirectory(contextPaths.ModelConfigDirectory);
+    }
+
+    public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        return LoadContext(teklaContext, includeAllPhases: false, useVisibleViewsForSearch: false, log);
+    }
+
+    public PhaseVisualizerContext LoadContext(
+        SynchronizationContext? teklaContext,
+        bool includeAllPhases,
+        bool useVisibleViewsForSearch = false,
+        ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
+        return LoadContext(
+            contextPaths.ModelConfigDirectory,
+            contextPaths.StateFilePath,
+            teklaContext,
+            includeAllPhases,
+            useVisibleViewsForSearch,
+            log);
+    }
+
+    public PhaseVisualizerContext LoadContext(
+        string? modelConfigDirectory,
+        SynchronizationContext? teklaContext,
+        bool includeAllPhases,
+        bool useVisibleViewsForSearch = false,
+        ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
+        return LoadContext(
+            contextPaths.ModelConfigDirectory,
+            contextPaths.StateFilePath,
+            teklaContext,
+            includeAllPhases,
+            useVisibleViewsForSearch,
+            log);
+    }
+
+    private PhaseVisualizerContext LoadContext(
+        string modelConfigDirectory,
+        string stateFilePath,
+        SynchronizationContext? teklaContext,
+        bool includeAllPhases,
+        bool useVisibleViewsForSearch,
+        ILogger? log = null)
+    {
+        var config = _configProvider.Load(modelConfigDirectory, log);
+        var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, useVisibleViewsForSearch, log);
+        var rows = _tableBuilder.BuildRows(snapshot, config, log);
+        var objectCount = snapshot.PhaseObjectCounts.Count > 0
+            ? snapshot.PhaseObjectCounts.Values.Sum()
+            : snapshot.Objects.Count;
+
+        return new PhaseVisualizerContext
+        {
+            Config = config,
+            Rows = rows,
+            StateFilePath = stateFilePath,
+            SnapshotMeta = new PhaseSnapshotMeta
+            {
+                CreatedAtUtc = snapshot.CreatedAtUtc,
+                ObjectCount = objectCount,
+                RowCount = rows.Count,
+            },
+        };
+    }
+
+    private static ContextPaths ResolveContextPathsFromTekla(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        var modelPath = ResolveModelPath(teklaContext, log);
+        return ContextPaths.FromModelPath(modelPath);
+    }
+
+    private static ContextPaths ResolveContextPathsFromConfigDirectory(string? modelConfigDirectory)
+    {
+        var safeModelConfigDirectory = modelConfigDirectory ?? string.Empty;
+        var modelPath = ResolveModelPathFromConfigDirectory(safeModelConfigDirectory);
+        return new ContextPaths(
+            modelPath,
+            safeModelConfigDirectory,
+            BuildStateFilePath(modelPath));
+    }
+
+    private static string ResolveModelPath(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        var modelPath = TeklaContextDispatcher.Run(teklaContext, () =>
+        {
+            var model = LazyModelConnector.ModelInstance;
+            var info = model?.GetInfo();
+            return info?.ModelPath;
+        },
+        log,
+        noContextWarning: "PhaseVisualizer model path resolve runs without Tekla synchronization context.",
+        sendFailedWarning: "PhaseVisualizer model path resolve on Tekla context failed. Falling back to direct call.");
+
+        if (string.IsNullOrWhiteSpace(modelPath))
+        {
+            return string.Empty;
+        }
+
+        return modelPath ?? string.Empty;
+    }
+
+    private static string BuildModelConfigDirectory(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath))
+        {
+            return string.Empty;
+        }
+
+        return Path.Combine(modelPath, ConfigDirectoryName);
+    }
+
+    private static string BuildStateFilePath(string modelPath)
+    {
+        if (string.IsNullOrWhiteSpace(modelPath))
+        {
+            return string.Empty;
+        }
+
+        return Path.Combine(modelPath, "attributes", StateFileName);
+    }
+
+    private static string ResolveModelPathFromConfigDirectory(string? modelConfigDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(modelConfigDirectory))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var normalized = Path.GetFullPath(modelConfigDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var leaf = Path.GetFileName(normalized);
+            if (leaf.Equals(ConfigDirectoryName, StringComparison.OrdinalIgnoreCase))
+            {
+                var modelPath = Path.GetFullPath(Path.Combine(normalized, ".."));
+                return Directory.Exists(modelPath) ? modelPath : string.Empty;
+            }
+
+            // Legacy fallback for old external callers still passing <model>\.mpd\menu.
+            if (leaf.Equals("menu", StringComparison.OrdinalIgnoreCase))
+            {
+                var maybeMpdPath = Path.GetFullPath(Path.Combine(normalized, ".."));
+                if (Path.GetFileName(maybeMpdPath).Equals(".mpd", StringComparison.OrdinalIgnoreCase))
+                {
+                    var modelPath = Path.GetFullPath(Path.Combine(maybeMpdPath, ".."));
+                    return Directory.Exists(modelPath) ? modelPath : string.Empty;
+                }
+            }
+
+            return Directory.Exists(normalized) ? normalized : string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private readonly struct ContextPaths
+    {
+        public ContextPaths(string modelPath, string modelConfigDirectory, string stateFilePath)
+        {
+            ModelPath = modelPath;
+            ModelConfigDirectory = modelConfigDirectory;
+            StateFilePath = stateFilePath;
+        }
+
+        public string ModelPath { get; }
+        public string ModelConfigDirectory { get; }
+        public string StateFilePath { get; }
+
+        public static ContextPaths FromModelPath(string modelPath)
+        {
+            return new ContextPaths(
+                modelPath,
+                BuildModelConfigDirectory(modelPath),
+                BuildStateFilePath(modelPath));
+        }
+    }
+}

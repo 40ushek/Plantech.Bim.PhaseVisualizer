@@ -1,0 +1,598 @@
+using Plantech.Bim.PhaseVisualizer.Configuration;
+using Plantech.Bim.PhaseVisualizer.Common;
+using Plantech.Bim.PhaseVisualizer.Domain;
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Threading;
+using Tekla.Structures.Filtering;
+using Tekla.Structures.Filtering.Categories;
+using Tekla.Structures;
+using Tekla.Structures.Model;
+using Tekla.Structures.Model.UI;
+
+namespace Plantech.Bim.PhaseVisualizer.Services;
+
+internal sealed class TeklaPhaseDataProvider
+{
+    private const string UdaPrefix = "part.ua.";
+
+    public PhaseSnapshot LoadPhaseSnapshot(
+        SynchronizationContext? teklaContext,
+        IReadOnlyCollection<PhaseColumnConfig>? requiredColumns,
+        bool includeAllPhases,
+        bool useVisibleViewsForSearch,
+        ILogger? log = null)
+    {
+        var requested = RequiredSourceSet.FromColumns(requiredColumns);
+        return TeklaContextDispatcher.Run(
+                   teklaContext,
+                   () => CollectSnapshot(log, requested, includeAllPhases, useVisibleViewsForSearch),
+                   log,
+                   noContextWarning: "PhaseVisualizer data load runs without Tekla synchronization context.",
+                   sendFailedWarning: "PhaseVisualizer data load on Tekla context failed. Falling back to direct call.")
+               ?? new PhaseSnapshot();
+    }
+
+    private static PhaseSnapshot CollectSnapshot(
+        ILogger? log,
+        RequiredSourceSet requested,
+        bool includeAllPhases,
+        bool useVisibleViewsForSearch)
+    {
+        var model = LazyModelConnector.ModelInstance;
+        if (model == null)
+        {
+            return new PhaseSnapshot();
+        }
+
+        var phases = CollectAllPhases(model);
+        var phaseObjectCounts = BuildPhaseCountMapByPhaseFilter(model, phases, log);
+
+        if (requested.RequiresAttributeScan)
+        {
+            var records = useVisibleViewsForSearch
+                ? CollectVisibleViewParts(model, log, requested)
+                : CollectTeklaModelParts(model, log, requested);
+            var allPhases = includeAllPhases
+                ? phases
+                : Array.Empty<PhaseCatalogEntry>();
+
+            return new PhaseSnapshot
+            {
+                CreatedAtUtc = DateTime.UtcNow,
+                Objects = records,
+                AllPhases = allPhases,
+                PhaseObjectCounts = phaseObjectCounts,
+            };
+        }
+
+        var filteredPhases = includeAllPhases
+            ? phases
+            : phases
+                .Where(p => phaseObjectCounts.TryGetValue(p.PhaseNumber, out var count) && count > 0)
+                .ToList();
+
+        return new PhaseSnapshot
+        {
+            CreatedAtUtc = DateTime.UtcNow,
+            Objects = Array.Empty<PhaseObjectRecord>(),
+            AllPhases = filteredPhases,
+            PhaseObjectCounts = phaseObjectCounts,
+        };
+    }
+
+    private static IReadOnlyDictionary<int, int> BuildPhaseCountMapByPhaseFilter(
+        Model model,
+        IReadOnlyCollection<PhaseCatalogEntry> phases,
+        ILogger? log)
+    {
+        if (model == null || phases == null || phases.Count == 0)
+        {
+            return new Dictionary<int, int>();
+        }
+
+        var selector = model.GetModelObjectSelector();
+        if (selector == null)
+        {
+            return new Dictionary<int, int>();
+        }
+
+        var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
+        ModelObjectEnumerator.AutoFetch = true;
+        var result = new Dictionary<int, int>();
+        try
+        {
+            foreach (var phase in phases)
+            {
+                try
+                {
+                    var filter = BuildPhaseFilter(phase.PhaseNumber);
+                    var objects = selector.GetObjectsByFilter(filter);
+
+                    //if (phase.PhaseNumber == 127)
+                    //    while (objects.MoveNext())
+                    //    {
+                    //        var o = objects.Current;
+                    //    }
+
+                    var count = objects?.GetSize() ?? 0;
+                    if (count > 0)
+                    {
+                        result[phase.PhaseNumber] = count;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log?.Warning(
+                        ex,
+                        "PhaseVisualizer phase count failed for phase {PhaseNumber}.",
+                        phase.PhaseNumber);
+                }
+            }
+        }
+        finally
+        {
+            ModelObjectEnumerator.AutoFetch = previousAutoFetch;
+        }
+
+        return result;
+    }
+
+    private static BinaryFilterExpression BuildPhaseFilter(int phaseNumber)
+    {
+        return new BinaryFilterExpression(
+            new ObjectFilterExpressions.Phase(),
+            NumericOperatorType.IS_EQUAL,
+            new NumericConstantFilterExpression(phaseNumber));
+    }
+
+    private static List<PhaseObjectRecord> CollectTeklaModelParts(Model model, ILogger? log, RequiredSourceSet requested)
+    {
+        var selector = model.GetModelObjectSelector();
+        if (selector == null)
+        {
+            return new List<PhaseObjectRecord>();
+        }
+
+        var result = new List<PhaseObjectRecord>();
+        var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
+        var assemblyMainPartDataByAssembly = new Dictionary<string, AssemblyMainPartData?>(StringComparer.Ordinal);
+        var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
+        ModelObjectEnumerator.AutoFetch = true;
+        try
+        {
+            var allObjects = selector.GetAllObjects();
+            AppendPartRecords(allObjects, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+
+            log?.Information(
+                "PhaseVisualizer Tekla model part snapshot collected. Parts={PartCount}",
+                result.Count);
+
+            return result;
+        }
+        finally
+        {
+            ModelObjectEnumerator.AutoFetch = previousAutoFetch;
+        }
+    }
+
+    private static List<PhaseObjectRecord> CollectVisibleViewParts(Model model, ILogger? log, RequiredSourceSet requested)
+    {
+        var selector = model.GetModelObjectSelector();
+        if (selector == null)
+        {
+            return new List<PhaseObjectRecord>();
+        }
+
+        var result = new List<PhaseObjectRecord>();
+        var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
+        var assemblyMainPartDataByAssembly = new Dictionary<string, AssemblyMainPartData?>(StringComparer.Ordinal);
+        var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
+        ModelObjectEnumerator.AutoFetch = true;
+        try
+        {
+            var visibleViews = ViewHandler.GetVisibleViews();
+            var viewCount = 0;
+            if (visibleViews != null)
+            {
+                while (visibleViews.MoveNext())
+                {
+                    if (visibleViews.Current is not View view || view.WorkArea == null)
+                    {
+                        continue;
+                    }
+
+                    viewCount++;
+                    var objectsInView = selector.GetObjectsByBoundingBox(
+                        view.WorkArea.MinPoint,
+                        view.WorkArea.MaxPoint);
+                    AppendPartRecords(objectsInView, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+                }
+            }
+
+            if (viewCount == 0)
+            {
+                var activeView = TeklaViewHelper.GetActiveView();
+                if (activeView?.WorkArea != null)
+                {
+                    var objectsInActiveView = selector.GetObjectsByBoundingBox(
+                        activeView.WorkArea.MinPoint,
+                        activeView.WorkArea.MaxPoint);
+                    AppendPartRecords(objectsInActiveView, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+                    viewCount = 1;
+                }
+            }
+
+            log?.Information(
+                "PhaseVisualizer visible-view part snapshot collected. Views={ViewCount}, Parts={PartCount}",
+                viewCount,
+                result.Count);
+
+            return result;
+        }
+        finally
+        {
+            ModelObjectEnumerator.AutoFetch = previousAutoFetch;
+        }
+    }
+
+    private static IReadOnlyList<PhaseCatalogEntry> CollectAllPhases(Model model)
+    {
+        var result = new List<PhaseCatalogEntry>();
+        var seen = new HashSet<int>();
+
+        var phases = model.GetPhases();
+        var enumerator = phases?.GetEnumerator();
+        if (enumerator == null)
+        {
+            return result;
+        }
+
+        while (enumerator.MoveNext())
+        {
+            if (enumerator.Current is not Phase phase)
+            {
+                continue;
+            }
+
+            if (!seen.Add(phase.PhaseNumber))
+            {
+                continue;
+            }
+
+            result.Add(new PhaseCatalogEntry
+            {
+                PhaseNumber = phase.PhaseNumber,
+                PhaseName = phase.PhaseName ?? string.Empty,
+            });
+        }
+
+        return result
+            .OrderBy(x => x.PhaseNumber)
+            .ToList();
+    }
+
+    private static void AppendPartRecords(
+        ModelObjectEnumerator? objects,
+        ICollection<PhaseObjectRecord> target,
+        ISet<string> uniqueObjectKeys,
+        RequiredSourceSet requested,
+        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+    {
+        if (objects == null)
+        {
+            return;
+        }
+
+        var size = objects.GetSize();
+        if (size <= 0)
+        {
+            return;
+        }
+
+        if (target is List<PhaseObjectRecord> list && list.Capacity < list.Count + size)
+        {
+            list.Capacity = list.Count + size;
+        }
+
+        while (objects.MoveNext())
+        {
+            if (objects.Current is not Part part)
+            {
+                continue;
+            }
+
+            var key = BuildObjectKey(part.Identifier);
+            if (!uniqueObjectKeys.Add(key))
+            {
+                continue;
+            }
+
+            target.Add(BuildRecord(part, requested, assemblyMainPartDataByAssembly));
+        }
+    }
+
+    private static PhaseObjectRecord BuildRecord(
+        Part part,
+        RequiredSourceSet requested,
+        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+    {
+        part.GetPhase(out var phase);
+
+        var phaseNumber = phase?.PhaseNumber ?? 0;
+        var phaseName = phase?.PhaseName ?? string.Empty;
+
+        var attributes = new Dictionary<string, PhaseCellValue>(StringComparer.Ordinal)
+        {
+            ["phase.number"] = PhaseCellValue.FromInteger(phaseNumber),
+            ["phase.name"] = PhaseCellValue.FromString(phaseName),
+        };
+
+        foreach (var partAttribute in requested.PartAttributes)
+        {
+            if (TryGetPartAttributeValue(part, partAttribute, out var partValue))
+            {
+                attributes[$"part.{partAttribute}"] = PhaseCellValue.FromString(partValue);
+            }
+        }
+
+        var assemblyMainPartData = requested.AssemblyMainPartAttributes.Count > 0
+            ? ResolveAssemblyMainPartData(part, assemblyMainPartDataByAssembly)
+            : null;
+        foreach (var assemblyMainPartAttribute in requested.AssemblyMainPartAttributes)
+        {
+            attributes[$"assembly.mainpart.{assemblyMainPartAttribute}"] = PhaseCellValue.FromString(
+                ResolveAssemblyMainPartAttributeValue(assemblyMainPartData, assemblyMainPartAttribute));
+        }
+
+        AppendUserAttributes(part, attributes, requested.UdaNames);
+
+        return new PhaseObjectRecord
+        {
+            ObjectId = part.Identifier,
+            PhaseNumber = phaseNumber,
+            PhaseName = phaseName,
+            Attributes = attributes,
+        };
+    }
+
+    private static bool TryGetPartAttributeValue(
+        Part part,
+        string attribute,
+        out string? value)
+    {
+        value = null;
+        switch (attribute)
+        {
+            case "profile":
+                value = part.Profile?.ProfileString;
+                return true;
+            case "material":
+                value = part.Material?.MaterialString;
+                return true;
+            case "class":
+                value = part.Class;
+                return true;
+            case "name":
+                value = part.Name;
+                return true;
+            case "finish":
+                value = part.Finish;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string? ResolveAssemblyMainPartAttributeValue(
+        AssemblyMainPartData? data,
+        string attribute)
+    {
+        if (data == null)
+        {
+            return null;
+        }
+
+        return attribute switch
+        {
+            "profile" => data.Profile,
+            "material" => data.Material,
+            "class" => data.Class,
+            "name" => data.Name,
+            "finish" => data.Finish,
+            _ => null,
+        };
+    }
+
+    private static AssemblyMainPartData? ResolveAssemblyMainPartData(
+        Part part,
+        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+    {
+        if (part == null)
+        {
+            return null;
+        }
+
+        Assembly? assembly = null;
+        try
+        {
+            assembly = part.GetAssembly();
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (assembly == null)
+        {
+            return null;
+        }
+
+        var assemblyKey = BuildObjectKey(assembly.Identifier);
+        if (assemblyMainPartDataByAssembly.TryGetValue(assemblyKey, out var cachedData))
+        {
+            return cachedData;
+        }
+
+        AssemblyMainPartData? resolvedData = null;
+        try
+        {
+            if (assembly.GetMainPart() is Part mainPart)
+            {
+                resolvedData = new AssemblyMainPartData
+                {
+                    Profile = mainPart.Profile?.ProfileString,
+                    Material = mainPart.Material?.MaterialString,
+                    Class = mainPart.Class,
+                    Name = mainPart.Name,
+                    Finish = mainPart.Finish,
+                };
+            }
+        }
+        catch
+        {
+            resolvedData = null;
+        }
+
+        assemblyMainPartDataByAssembly[assemblyKey] = resolvedData;
+        return resolvedData;
+    }
+
+    private static void AppendUserAttributes(
+        Part part,
+        IDictionary<string, PhaseCellValue> target,
+        IReadOnlyCollection<string> udaNames)
+    {
+        if (udaNames == null || udaNames.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var udaName in udaNames)
+        {
+            if (string.IsNullOrWhiteSpace(udaName))
+            {
+                continue;
+            }
+
+            if (TryGetUserPropertyValue(part, udaName, out var value))
+            {
+                target[$"{UdaPrefix}{udaName}"] = PhaseCellValue.FromObject(value);
+            }
+        }
+    }
+
+    private static bool TryGetUserPropertyValue(Part part, string udaName, out object? value)
+    {
+        value = null;
+
+        string text = string.Empty;
+        if (part.GetUserProperty(udaName, ref text))
+        {
+            value = text;
+            return true;
+        }
+
+        int integer = 0;
+        if (part.GetUserProperty(udaName, ref integer))
+        {
+            value = integer;
+            return true;
+        }
+
+        double number = 0d;
+        if (part.GetUserProperty(udaName, ref number))
+        {
+            value = number;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string BuildObjectKey(Identifier identifier)
+    {
+        if (identifier.GUID != Guid.Empty)
+        {
+            return identifier.GUID.ToString("D", CultureInfo.InvariantCulture);
+        }
+
+        return FormattableString.Invariant($"{identifier.ID}:{identifier.ID2}");
+    }
+
+
+
+    private sealed class AssemblyMainPartData
+    {
+        public string? Profile { get; set; }
+        public string? Material { get; set; }
+        public string? Class { get; set; }
+        public string? Name { get; set; }
+        public string? Finish { get; set; }
+    }
+
+    private sealed class RequiredSourceSet
+    {
+        public bool RequiresAttributeScan { get; private set; }
+        public IReadOnlyCollection<string> PartAttributes => _partAttributes;
+        public IReadOnlyCollection<string> AssemblyMainPartAttributes => _assemblyMainPartAttributes;
+        public IReadOnlyCollection<string> UdaNames => _udaNames;
+
+        private readonly HashSet<string> _partAttributes = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _assemblyMainPartAttributes = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _udaNames = new(StringComparer.OrdinalIgnoreCase);
+
+        public static RequiredSourceSet FromColumns(IReadOnlyCollection<PhaseColumnConfig>? columns)
+        {
+            var result = new RequiredSourceSet();
+            if (columns == null || columns.Count == 0)
+            {
+                return result;
+            }
+
+            foreach (var column in columns.Where(c => c != null))
+            {
+                if (column.Editable
+                    || !column.ObjectType.HasValue
+                    || string.IsNullOrWhiteSpace(column.Attribute))
+                {
+                    continue;
+                }
+
+                var attribute = column.Attribute.Trim();
+                switch (column.ObjectType.Value)
+                {
+                    case PhaseColumnObjectType.Phase:
+                        continue;
+                    case PhaseColumnObjectType.Part:
+                        result.RequiresAttributeScan = true;
+                        if (attribute.StartsWith("ua.", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var udaName = attribute.Substring("ua.".Length).Trim();
+                            if (!string.IsNullOrWhiteSpace(udaName))
+                            {
+                                result._udaNames.Add(udaName);
+                            }
+
+                            continue;
+                        }
+
+                        result._partAttributes.Add(attribute);
+                        continue;
+                    case PhaseColumnObjectType.AssemblyMainPart:
+                        result.RequiresAttributeScan = true;
+                        result._assemblyMainPartAttributes.Add(attribute);
+                        continue;
+                    default:
+                        continue;
+                }
+            }
+
+            return result;
+        }
+    }
+}
+

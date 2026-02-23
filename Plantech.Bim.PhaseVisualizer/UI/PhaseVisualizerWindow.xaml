@@ -1,0 +1,14 @@
+<Window
+    x:Class="Plantech.Bim.PhaseVisualizer.UI.PhaseVisualizerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="clr-namespace:Plantech.Bim.PhaseVisualizer.UI"
+    Title="Phase Visualizer"
+    Width="920"
+    Height="620"
+    MinWidth="760"
+    MinHeight="420"
+    WindowStartupLocation="CenterScreen">
+    <ui:PhaseVisualizerView x:Name="MainView" />
+</Window>
+

@@ -1,0 +1,17 @@
+<tsd:PluginWindowBase
+    x:Class="Plantech.Bim.PhaseVisualizer.Plugins.PhaseVisualizerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:tsd="clr-namespace:Tekla.Structures.Dialog;assembly=Tekla.Structures.Dialog"
+    xmlns:ui="clr-namespace:Plantech.Bim.PhaseVisualizer.UI"
+    Title="Phase Visualizer"
+    Width="920"
+    Height="620"
+    MinWidth="760"
+    MinHeight="420"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    <ui:PhaseVisualizerView x:Name="MainView" />
+</tsd:PluginWindowBase>

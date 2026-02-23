@@ -1,0 +1,32 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+Debug/
+Release/
+x64/
+x86/
+AnyCPU/
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+project.assets.json
+project.nuget.cache
+
+# Logs
+*.log
+
+# Local/private planning docs
+Plantech.Bim.PhaseVisualizer/ROADMAP_REFACTORING.local.md
+
+# OS files
+Thumbs.db
+Desktop.ini
