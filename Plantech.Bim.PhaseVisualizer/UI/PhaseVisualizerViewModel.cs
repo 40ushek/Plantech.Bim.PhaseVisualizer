@@ -164,7 +164,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             forceReloadFromModel,
             _stateFilePath,
             ShowAllPhases,
-            UseVisibleViewsForSearch,
+            PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
             _isRestoringShowAllPhases,
             _isRestoringUseVisibleViewsForSearch);
 
@@ -295,14 +295,14 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             context.PresetName,
             _cachedRowStatesByPhase,
             ShowAllPhases,
-            UseVisibleViewsForSearch);
+            PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch));
         if (!loadedPreset.IsSuccess)
         {
             return false;
         }
 
         ShowAllPhases = loadedPreset.ShowAllPhases;
-        UseVisibleViewsForSearch = loadedPreset.UseVisibleViewsForSearch;
+        UseVisibleViewsForSearch = PhaseSearchScopeMapper.ToUseVisibleViewsFlag(loadedPreset.SearchScope);
 
         if (loadedPreset.RequiresReload)
         {

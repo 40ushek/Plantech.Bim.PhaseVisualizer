@@ -55,7 +55,7 @@ internal sealed class PhaseContextLoadController
             context = _controller.LoadContext(
                 _teklaContext,
                 includeAllPhases: true,
-                useVisibleViewsForSearch: PhaseSearchScopeMapper.ToUseVisibleViewsFlag(searchScope),
+                searchScope: searchScope,
                 _log);
             _cachedAllPhasesContexts[searchScope] = context;
         }

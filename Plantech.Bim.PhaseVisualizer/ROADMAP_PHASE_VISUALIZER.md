@@ -102,13 +102,14 @@ Done:
 - UI shows explicit failure status (`Apply failed...`) when apply returns `false`.
 
 ### M11 - Model Scope vs View Scope Separation
-Status: TODO
+Status: DONE
 
-Planned:
-- Split data query scope from visualization scope explicitly.
-- Keep object/phase search and counts model-wide (view-independent).
-- Keep visualization/apply as view-level operation on active/visible view.
-- Avoid result drift caused by view settings when user expects global model behavior.
+Done:
+- Internal runtime flow now uses explicit `PhaseSearchScope` (model vs visible views) instead of implicit bool in load orchestration.
+- Data-load context cache is keyed by `PhaseSearchScope`, making scope separation explicit in controller/workflow/provider chain.
+- Status/UI load formatting now receives explicit scope enum, not boolean flag.
+- Phase counts remain model-wide (`GetObjectsByFilter(...).GetSize()`), independent of view scope.
+- Visualization/apply remains view-level (active/visible view), separated from data query scope.
 
 ### M15 - ApplyRule Config-Driven Conditions
 Status: DONE
@@ -139,6 +140,5 @@ Note:
 
 ## Next Recommended Step
 
-1. Execute **M11 model-scope query vs view-scope visualization split** to remove view-driven result ambiguity.
-2. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
-3. Execute **M8 typed editable operations** if priority remains unchanged.
+1. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
+2. Execute **M8 typed editable operations** if priority remains unchanged.

@@ -11,7 +11,7 @@ internal sealed class PhasePresetApplyController
         PhaseTablePresetState preset,
         IDictionary<int, PhaseTableRowState> rowCacheByPhase,
         bool currentShowAllPhases,
-        bool currentUseVisibleViewsForSearch)
+        PhaseSearchScope currentSearchScope)
     {
         if (preset == null)
         {
@@ -33,7 +33,7 @@ internal sealed class PhasePresetApplyController
         }
 
         var showAllPhases = currentShowAllPhases;
-        var useVisibleViewsForSearch = currentUseVisibleViewsForSearch;
+        var searchScope = currentSearchScope;
         var requiresReload = false;
 
         if (preset.ShowAllPhases.HasValue && preset.ShowAllPhases.Value != currentShowAllPhases)
@@ -43,13 +43,13 @@ internal sealed class PhasePresetApplyController
         }
 
         if (preset.UseVisibleViewsForSearch.HasValue
-            && preset.UseVisibleViewsForSearch.Value != currentUseVisibleViewsForSearch)
+            && preset.UseVisibleViewsForSearch.Value != PhaseSearchScopeMapper.ToUseVisibleViewsFlag(currentSearchScope))
         {
-            useVisibleViewsForSearch = preset.UseVisibleViewsForSearch.Value;
+            searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(preset.UseVisibleViewsForSearch.Value);
             requiresReload = true;
         }
 
-        return new PhasePresetApplyResult(showAllPhases, useVisibleViewsForSearch, requiresReload);
+        return new PhasePresetApplyResult(showAllPhases, searchScope, requiresReload);
     }
 }
 
@@ -57,17 +57,17 @@ internal sealed class PhasePresetApplyResult
 {
     public PhasePresetApplyResult(
         bool showAllPhases,
-        bool useVisibleViewsForSearch,
+        PhaseSearchScope searchScope,
         bool requiresReload)
     {
         ShowAllPhases = showAllPhases;
-        UseVisibleViewsForSearch = useVisibleViewsForSearch;
+        SearchScope = searchScope;
         RequiresReload = requiresReload;
     }
 
     public bool ShowAllPhases { get; }
 
-    public bool UseVisibleViewsForSearch { get; }
+    public PhaseSearchScope SearchScope { get; }
 
     public bool RequiresReload { get; }
 }

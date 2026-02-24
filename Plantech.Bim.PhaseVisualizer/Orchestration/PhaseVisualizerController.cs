@@ -57,7 +57,7 @@ internal sealed class PhaseVisualizerController
 
     public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        return LoadContext(teklaContext, includeAllPhases: false, useVisibleViewsForSearch: false, log);
+        return LoadContext(teklaContext, includeAllPhases: false, PhaseSearchScope.TeklaModel, log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -66,12 +66,22 @@ internal sealed class PhaseVisualizerController
         bool useVisibleViewsForSearch = false,
         ILogger? log = null)
     {
+        var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
+        return LoadContext(teklaContext, includeAllPhases, searchScope, log);
+    }
+
+    public PhaseVisualizerContext LoadContext(
+        SynchronizationContext? teklaContext,
+        bool includeAllPhases,
+        PhaseSearchScope searchScope,
+        ILogger? log = null)
+    {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
         return LoadContextCore(
             contextPaths,
             teklaContext,
             includeAllPhases,
-            useVisibleViewsForSearch,
+            searchScope,
             log);
     }
 
@@ -82,12 +92,23 @@ internal sealed class PhaseVisualizerController
         bool useVisibleViewsForSearch = false,
         ILogger? log = null)
     {
+        var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
+        return LoadContext(modelConfigDirectory, teklaContext, includeAllPhases, searchScope, log);
+    }
+
+    public PhaseVisualizerContext LoadContext(
+        string? modelConfigDirectory,
+        SynchronizationContext? teklaContext,
+        bool includeAllPhases,
+        PhaseSearchScope searchScope,
+        ILogger? log = null)
+    {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
         return LoadContextCore(
             contextPaths,
             teklaContext,
             includeAllPhases,
-            useVisibleViewsForSearch,
+            searchScope,
             log);
     }
 
@@ -95,11 +116,10 @@ internal sealed class PhaseVisualizerController
         ContextPaths contextPaths,
         SynchronizationContext? teklaContext,
         bool includeAllPhases,
-        bool useVisibleViewsForSearch,
+        PhaseSearchScope searchScope,
         ILogger? log = null)
     {
         var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
-        var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
         var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, searchScope, log);
         var rows = _tableBuilder.BuildRows(snapshot, config, log);
         var objectCount = snapshot.PhaseObjectCounts.Count > 0
