@@ -271,9 +271,10 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             return false;
         }
 
-        ApplyPresetNamesState(saveResult.State);
-        PresetName = saveResult.PresetName;
-        StatusText = $"Preset '{saveResult.PresetName}' saved.";
+        CompletePresetMutation(
+            saveResult.State,
+            saveResult.PresetName,
+            $"Preset '{saveResult.PresetName}' saved.");
         return true;
     }
 
@@ -333,9 +334,10 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             return false;
         }
 
-        ApplyPresetNamesState(deleteResult.State);
-        PresetName = string.Empty;
-        StatusText = $"Preset '{context.PresetName}' deleted.";
+        CompletePresetMutation(
+            deleteResult.State,
+            string.Empty,
+            $"Preset '{context.PresetName}' deleted.");
         return true;
     }
 
@@ -381,6 +383,16 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             _columns,
             SelectedColumnKey,
             PhaseNumberColumnKey);
+    }
+
+    private void CompletePresetMutation(
+        PhaseTableState state,
+        string presetName,
+        string statusText)
+    {
+        ApplyPresetNamesState(state);
+        PresetName = presetName;
+        StatusText = statusText;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

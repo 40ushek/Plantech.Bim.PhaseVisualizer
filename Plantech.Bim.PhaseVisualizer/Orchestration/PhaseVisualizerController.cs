@@ -67,9 +67,8 @@ internal sealed class PhaseVisualizerController
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
-        return LoadContext(
-            contextPaths.ModelConfigDirectory,
-            contextPaths.StateFilePath,
+        return LoadContextCore(
+            contextPaths,
             teklaContext,
             includeAllPhases,
             useVisibleViewsForSearch,
@@ -84,24 +83,22 @@ internal sealed class PhaseVisualizerController
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
-        return LoadContext(
-            contextPaths.ModelConfigDirectory,
-            contextPaths.StateFilePath,
+        return LoadContextCore(
+            contextPaths,
             teklaContext,
             includeAllPhases,
             useVisibleViewsForSearch,
             log);
     }
 
-    private PhaseVisualizerContext LoadContext(
-        string modelConfigDirectory,
-        string stateFilePath,
+    private PhaseVisualizerContext LoadContextCore(
+        ContextPaths contextPaths,
         SynchronizationContext? teklaContext,
         bool includeAllPhases,
         bool useVisibleViewsForSearch,
         ILogger? log = null)
     {
-        var config = _configProvider.Load(modelConfigDirectory, log);
+        var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
         var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, useVisibleViewsForSearch, log);
         var rows = _tableBuilder.BuildRows(snapshot, config, log);
         var objectCount = snapshot.PhaseObjectCounts.Count > 0
@@ -112,7 +109,7 @@ internal sealed class PhaseVisualizerController
         {
             Config = config,
             Rows = rows,
-            StateFilePath = stateFilePath,
+            StateFilePath = contextPaths.StateFilePath,
             SnapshotMeta = new PhaseSnapshotMeta
             {
                 CreatedAtUtc = snapshot.CreatedAtUtc,
