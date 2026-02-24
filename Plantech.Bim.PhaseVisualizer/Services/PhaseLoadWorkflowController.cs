@@ -76,7 +76,8 @@ internal sealed class PhaseLoadWorkflowController
             shouldApplyShowAllPhases,
             effectiveShowAllPhases,
             shouldApplyUseVisibleViewsForSearch,
-            effectiveUseVisibleViewsForSearch);
+            effectiveUseVisibleViewsForSearch,
+            effectiveSearchScope);
     }
 }
 
@@ -90,7 +91,8 @@ internal sealed class PhaseLoadWorkflowResult
         bool shouldApplyShowAllPhases,
         bool showAllPhases,
         bool shouldApplyUseVisibleViewsForSearch,
-        bool useVisibleViewsForSearch)
+        bool useVisibleViewsForSearch,
+        PhaseSearchScope searchScope)
     {
         Context = context ?? throw new ArgumentNullException(nameof(context));
         PersistedState = persistedState;
@@ -100,6 +102,7 @@ internal sealed class PhaseLoadWorkflowResult
         ShowAllPhases = showAllPhases;
         ShouldApplyUseVisibleViewsForSearch = shouldApplyUseVisibleViewsForSearch;
         UseVisibleViewsForSearch = useVisibleViewsForSearch;
+        SearchScope = searchScope;
     }
 
     public PhaseVisualizerContext Context { get; }
@@ -117,4 +120,6 @@ internal sealed class PhaseLoadWorkflowResult
     public bool ShouldApplyUseVisibleViewsForSearch { get; }
 
     public bool UseVisibleViewsForSearch { get; }
+
+    public PhaseSearchScope SearchScope { get; }
 }

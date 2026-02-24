@@ -175,7 +175,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         }
 
         _stateFilePath = loadResult.StateFilePath;
-        ApplyLoadedContext(loadResult.Context, loadResult.PersistedState);
+        ApplyLoadedContext(loadResult.Context, loadResult.PersistedState, loadResult.SearchScope);
     }
 
     public void Apply()
@@ -230,7 +230,10 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         }
     }
 
-    private void ApplyLoadedContext(PhaseVisualizerContext context, PhaseTableState? persistedState)
+    private void ApplyLoadedContext(
+        PhaseVisualizerContext context,
+        PhaseTableState? persistedState,
+        PhaseSearchScope searchScope)
     {
         ApplyPresetNamesState(persistedState);
 
@@ -240,7 +243,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             context,
             persistedState,
             ShowAllPhases,
-            PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
+            searchScope,
             SelectedColumnKey,
             PhaseNumberColumnKey);
 
