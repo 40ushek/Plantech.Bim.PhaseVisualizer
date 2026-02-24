@@ -69,7 +69,7 @@ internal sealed class PhaseTableBuilder
                 continue;
             }
 
-            row.ObjectCount = count;
+            row.UpdateObjectCount(count);
             foreach (var column in columns)
             {
                 if (column.Aggregate != PhaseAggregateType.Count)
@@ -150,7 +150,7 @@ internal sealed class PhaseTableBuilder
 
             if (string.IsNullOrWhiteSpace(row.PhaseName))
             {
-                row.PhaseName = phaseName;
+                row.UpdatePhaseName(phaseName);
             }
 
             row.Cells[column.Key] = PhaseCellValue.FromString(phaseName).ConvertTo(column.Type);
@@ -169,12 +169,7 @@ internal sealed class PhaseTableBuilder
             .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
             ?? string.Empty;
 
-        var row = new PhaseRow
-        {
-            PhaseNumber = phaseNumber,
-            PhaseName = phaseName,
-            ObjectCount = objects.Count,
-        };
+        var row = new PhaseRow(phaseNumber, phaseName, objects.Count);
 
         foreach (var column in columns)
         {
