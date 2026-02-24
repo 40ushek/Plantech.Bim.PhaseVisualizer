@@ -221,7 +221,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             try
             {
                 _isRestoringUseVisibleViewsForSearch = true;
-                UseVisibleViewsForSearch = loadResult.UseVisibleViewsForSearch;
+                UseVisibleViewsForSearch = PhaseSearchScopeMapper.ToUseVisibleViewsFlag(loadResult.SearchScope);
             }
             finally
             {
