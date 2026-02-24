@@ -111,15 +111,13 @@ Planned:
 - Avoid result drift caused by view settings when user expects global model behavior.
 
 ### M15 - ApplyRule Config-Driven Conditions
-Status: PARTIAL
+Status: DONE
 
 Done:
 - `applyRule` schema + pass-through + validator + builder execution are implemented.
 - Legacy alias mapping for `booleanMode` and `exclude_existing` is implemented.
-
-Remaining:
-- Move `exclude_gratings` special-case to fully declarative legacy mapping.
-- Add focused runtime regression checks for mixed rule sets (`applyRule` + legacy configs).
+- `exclude_gratings` moved from builder special-case into declarative legacy mapping.
+- Focused regression checks added for legacy no-op/true-branch behavior (`exclude_existing`, `exclude_gratings`) and generic fallback diagnostics.
 
 ## Known Behavior / Known Limits
 
@@ -141,7 +139,6 @@ Note:
 
 ## Next Recommended Step
 
-1. Complete **M15 remaining items** (declarative `exclude_gratings`, mixed-rule regression checks).
-2. Execute **M11 model-scope query vs view-scope visualization split** to remove view-driven result ambiguity.
-3. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
-4. Execute **M8 typed editable operations** if priority remains unchanged.
+1. Execute **M11 model-scope query vs view-scope visualization split** to remove view-driven result ambiguity.
+2. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
+3. Execute **M8 typed editable operations** if priority remains unchanged.

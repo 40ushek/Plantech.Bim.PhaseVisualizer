@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Plantech.Bim.PhaseVisualizer.Domain;
 
 namespace Plantech.Bim.PhaseVisualizer.Rules;
 
@@ -29,6 +30,8 @@ internal sealed class ApplyRuleClauseRuntime
     public ApplyRuleOperation Operation { get; set; } = ApplyRuleOperation.Eq;
     public bool UsesInputValue { get; set; }
     public IReadOnlyList<string> LiteralValues { get; set; } = Array.Empty<string>();
+    public bool UseProfileScope { get; set; }
+    public PhaseColumnObjectType? ProfileScopeObjectType { get; set; }
 }
 
 internal static class ApplyRuleOperationHelper

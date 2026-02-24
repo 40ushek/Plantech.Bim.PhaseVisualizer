@@ -7,6 +7,7 @@ internal static class LegacyApplyRuleMapper
 {
     private const string BooleanModePositiveNumber = "positivenumber";
     private const string ExcludeExistingAttribute = "exclude_existing";
+    private const string ExcludeGratingsAttribute = "exclude_gratings";
 
     public static bool TryMap(PhaseAttributeFilter filter, out ApplyRuleClauseRuntime? runtimeClause)
     {
@@ -22,6 +23,11 @@ internal static class LegacyApplyRuleMapper
         }
 
         if (TryMapExcludeExisting(filter, out runtimeClause))
+        {
+            return true;
+        }
+
+        if (TryMapExcludeGratings(filter, out runtimeClause))
         {
             return true;
         }
@@ -52,10 +58,14 @@ internal static class LegacyApplyRuleMapper
     private static bool TryMapExcludeExisting(PhaseAttributeFilter filter, out ApplyRuleClauseRuntime? runtimeClause)
     {
         runtimeClause = null;
-        if (!string.Equals(filter.TargetAttribute.Trim(), ExcludeExistingAttribute, StringComparison.OrdinalIgnoreCase)
-            || !IsTruthy(filter.Value))
+        if (!string.Equals(filter.TargetAttribute.Trim(), ExcludeExistingAttribute, StringComparison.OrdinalIgnoreCase))
         {
             return false;
+        }
+
+        if (!IsTruthy(filter.Value))
+        {
+            return true;
         }
 
         runtimeClause = new ApplyRuleClauseRuntime
@@ -64,6 +74,32 @@ internal static class LegacyApplyRuleMapper
             Operation = ApplyRuleOperation.Neq,
             UsesInputValue = false,
             LiteralValues = new[] { "1" },
+        };
+
+        return true;
+    }
+
+    private static bool TryMapExcludeGratings(PhaseAttributeFilter filter, out ApplyRuleClauseRuntime? runtimeClause)
+    {
+        runtimeClause = null;
+        if (!string.Equals(filter.TargetAttribute.Trim(), ExcludeGratingsAttribute, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!IsTruthy(filter.Value))
+        {
+            return true;
+        }
+
+        runtimeClause = new ApplyRuleClauseRuntime
+        {
+            Field = "PROFILE",
+            Operation = ApplyRuleOperation.NotStartsWith,
+            UsesInputValue = false,
+            LiteralValues = new[] { "GIRO" },
+            UseProfileScope = true,
+            ProfileScopeObjectType = filter.TargetObjectType,
         };
 
         return true;

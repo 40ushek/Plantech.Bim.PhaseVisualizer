@@ -82,6 +82,60 @@ public sealed class ApplyRuleBehaviorTests
     }
 
     [Fact]
+    public void LegacyApplyRuleMapper_RecognizesExcludeExisting_WhenFalse_AsNoOp()
+    {
+        var filter = new PhaseAttributeFilter
+        {
+            TargetAttribute = "exclude_existing",
+            ValueType = PhaseValueType.Boolean,
+            Value = "false",
+        };
+
+        var mapped = LegacyApplyRuleMapper.TryMap(filter, out var clause);
+
+        Assert.True(mapped);
+        Assert.Null(clause);
+    }
+
+    [Fact]
+    public void LegacyApplyRuleMapper_MapsExcludeGratings_WhenTrue()
+    {
+        var filter = new PhaseAttributeFilter
+        {
+            TargetAttribute = "exclude_gratings",
+            ValueType = PhaseValueType.Boolean,
+            Value = "true",
+            TargetObjectType = PhaseColumnObjectType.AssemblyMainPart,
+        };
+
+        var mapped = LegacyApplyRuleMapper.TryMap(filter, out var clause);
+
+        Assert.True(mapped);
+        Assert.NotNull(clause);
+        Assert.True(clause!.UseProfileScope);
+        Assert.Equal(PhaseColumnObjectType.AssemblyMainPart, clause.ProfileScopeObjectType);
+        Assert.Equal(ApplyRuleOperation.NotStartsWith, clause.Operation);
+        Assert.Single(clause.LiteralValues);
+        Assert.Equal("GIRO", clause.LiteralValues[0]);
+    }
+
+    [Fact]
+    public void LegacyApplyRuleMapper_RecognizesExcludeGratings_WhenFalse_AsNoOp()
+    {
+        var filter = new PhaseAttributeFilter
+        {
+            TargetAttribute = "exclude_gratings",
+            ValueType = PhaseValueType.Boolean,
+            Value = "false",
+        };
+
+        var mapped = LegacyApplyRuleMapper.TryMap(filter, out var clause);
+
+        Assert.True(mapped);
+        Assert.Null(clause);
+    }
+
+    [Fact]
     public void ApplyRuleValidator_RejectsOnValue_ForBooleanColumn()
     {
         var validator = new ApplyRuleValidator();
@@ -195,6 +249,33 @@ public sealed class ApplyRuleBehaviorTests
                         TargetAttribute = "CUSTOM.HasBooleans",
                         ValueType = PhaseValueType.String,
                         Value = "1",
+                    },
+                },
+            },
+        };
+
+        var result = builder.Build(selection, out var diagnostics);
+
+        Assert.NotNull(result);
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void PhaseFilterExpressionBuilder_DoesNotReportDiagnostic_ForLegacyExcludeExistingFalse()
+    {
+        var builder = new PhaseFilterExpressionBuilder();
+        var selection = new[]
+        {
+            new PhaseSelectionCriteria
+            {
+                PhaseNumber = 122,
+                AttributeFilters = new List<PhaseAttributeFilter>
+                {
+                    new()
+                    {
+                        TargetAttribute = "exclude_existing",
+                        ValueType = PhaseValueType.Boolean,
+                        Value = "false",
                     },
                 },
             },

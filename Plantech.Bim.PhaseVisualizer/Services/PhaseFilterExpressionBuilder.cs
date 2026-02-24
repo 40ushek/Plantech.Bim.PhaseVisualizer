@@ -10,8 +10,6 @@ namespace Plantech.Bim.PhaseVisualizer.Services;
 
 internal sealed class PhaseFilterExpressionBuilder
 {
-    // Legacy macro-era criteria flags. Keep for compatibility; prefer explicit model-targeted editable columns.
-    private const string ExcludeGratingsAttribute = "exclude_gratings";
     private static readonly ApplyRuleCompiler ApplyRuleCompiler = new();
 
     public BinaryFilterExpressionCollection Build(IReadOnlyCollection<PhaseSelectionCriteria>? selection)
@@ -91,7 +89,6 @@ internal sealed class PhaseFilterExpressionBuilder
         }
 
         var targetAttribute = attributeFilter.TargetAttribute.Trim();
-        var normalizedTargetAttribute = targetAttribute.ToLowerInvariant();
 
         if (TryBuildConfiguredRuleExpression(attributeFilter, phaseNumber, diagnostics, out var configuredRuleExpression))
         {
@@ -100,7 +97,6 @@ internal sealed class PhaseFilterExpressionBuilder
 
         if (TryBuildLegacyExpression(
                 attributeFilter,
-                normalizedTargetAttribute,
                 phaseNumber,
                 diagnostics,
                 out var legacyExpression))
@@ -113,7 +109,6 @@ internal sealed class PhaseFilterExpressionBuilder
 
     private static bool TryBuildLegacyExpression(
         PhaseAttributeFilter attributeFilter,
-        string normalizedTargetAttribute,
         int phaseNumber,
         IList<string> diagnostics,
         out FilterExpression? expression)
@@ -123,12 +118,6 @@ internal sealed class PhaseFilterExpressionBuilder
         if (TryBuildLegacyMappedExpression(attributeFilter, phaseNumber, diagnostics, out var mappedExpression))
         {
             expression = mappedExpression;
-            return true;
-        }
-
-        if (TryBuildLegacyExcludeGratingsExpression(attributeFilter, normalizedTargetAttribute, out var excludeGratingsExpression))
-        {
-            expression = excludeGratingsExpression;
             return true;
         }
 
@@ -183,30 +172,12 @@ internal sealed class PhaseFilterExpressionBuilder
             return true;
         }
 
-        expression = BuildRuntimeClauseExpression(mappedLegacyClause, attributeFilter.ValueType, attributeFilter.Value, phaseNumber, diagnostics);
-        return true;
-    }
-
-    private static bool TryBuildLegacyExcludeGratingsExpression(
-        PhaseAttributeFilter attributeFilter,
-        string normalizedTargetAttribute,
-        out FilterExpression? expression)
-    {
-        expression = null;
-        if (normalizedTargetAttribute != ExcludeGratingsAttribute)
-        {
-            return false;
-        }
-
-        if (!IsTruthy(attributeFilter.Value))
-        {
-            return true;
-        }
-
-        expression = BuildScopedProfileStringExpression(
-            attributeFilter.TargetObjectType,
-            "notStartsWith",
-            new[] { "GIRO" });
+        expression = BuildRuntimeClauseExpression(
+            mappedLegacyClause,
+            attributeFilter.ValueType,
+            attributeFilter.Value,
+            phaseNumber,
+            diagnostics);
         return true;
     }
 
@@ -305,6 +276,14 @@ internal sealed class PhaseFilterExpressionBuilder
         {
             diagnostics.Add($"Phase {phaseNumber}: applyRule for field '{clause.Field}' has no usable value.");
             return null;
+        }
+
+        if (clause.UseProfileScope)
+        {
+            return BuildScopedProfileStringExpression(
+                clause.ProfileScopeObjectType,
+                ConvertOperationToString(clause.Operation),
+                values);
         }
 
         if (TryBuildStrictNumericRuleExpression(clause, values, phaseNumber, diagnostics, out var strictNumericExpression))
@@ -797,18 +776,6 @@ internal sealed class PhaseFilterExpressionBuilder
             .Select(x => x!)
             .OrderBy(x => x.PhaseNumber)
             .ToList();
-    }
-
-    private static bool IsTruthy(string? value)
-    {
-        var normalized = value?.Trim();
-        if (string.IsNullOrWhiteSpace(normalized))
-        {
-            return false;
-        }
-
-        return string.Equals(normalized, "true", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(normalized, "1", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string BuildApplyRuleSignature(PhaseApplyRuleConfig? applyRule)
