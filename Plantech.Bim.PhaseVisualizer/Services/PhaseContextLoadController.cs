@@ -12,7 +12,7 @@ internal sealed class PhaseContextLoadController
     private readonly PhaseVisualizerController _controller;
     private readonly SynchronizationContext? _teklaContext;
     private readonly ILogger _log;
-    private readonly Dictionary<bool, PhaseVisualizerContext> _cachedAllPhasesContexts = new();
+    private readonly Dictionary<PhaseSearchScope, PhaseVisualizerContext> _cachedAllPhasesContexts = new();
 
     public PhaseContextLoadController(
         PhaseVisualizerController controller,
@@ -31,7 +31,7 @@ internal sealed class PhaseContextLoadController
 
     public PhaseContextLoadResult Resolve(
         bool forceReloadFromModel,
-        bool useVisibleViewsForSearch,
+        PhaseSearchScope searchScope,
         string? stateFilePath)
     {
         var nextStateFilePath = stateFilePath ?? string.Empty;
@@ -50,14 +50,14 @@ internal sealed class PhaseContextLoadController
             nextStateFilePath = currentStateFilePath;
         }
 
-        if (forceReloadFromModel || !_cachedAllPhasesContexts.TryGetValue(useVisibleViewsForSearch, out var context))
+        if (forceReloadFromModel || !_cachedAllPhasesContexts.TryGetValue(searchScope, out var context))
         {
             context = _controller.LoadContext(
                 _teklaContext,
                 includeAllPhases: true,
-                useVisibleViewsForSearch: useVisibleViewsForSearch,
+                useVisibleViewsForSearch: PhaseSearchScopeMapper.ToUseVisibleViewsFlag(searchScope),
                 _log);
-            _cachedAllPhasesContexts[useVisibleViewsForSearch] = context;
+            _cachedAllPhasesContexts[searchScope] = context;
         }
 
         return new PhaseContextLoadResult(

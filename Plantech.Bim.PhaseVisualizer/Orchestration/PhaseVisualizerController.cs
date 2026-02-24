@@ -99,7 +99,8 @@ internal sealed class PhaseVisualizerController
         ILogger? log = null)
     {
         var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
-        var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, useVisibleViewsForSearch, log);
+        var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
+        var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, searchScope, log);
         var rows = _tableBuilder.BuildRows(snapshot, config, log);
         var objectCount = snapshot.PhaseObjectCounts.Count > 0
             ? snapshot.PhaseObjectCounts.Values.Sum()

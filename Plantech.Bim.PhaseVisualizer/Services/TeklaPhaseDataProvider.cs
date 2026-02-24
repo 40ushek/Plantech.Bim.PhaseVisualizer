@@ -18,11 +18,6 @@ namespace Plantech.Bim.PhaseVisualizer.Services;
 internal sealed class TeklaPhaseDataProvider
 {
     private const string UdaPrefix = "part.ua.";
-    private enum AttributeScanScope
-    {
-        TeklaModel,
-        VisibleViews,
-    }
 
     public PhaseSnapshot LoadPhaseSnapshot(
         SynchronizationContext? teklaContext,
@@ -31,10 +26,21 @@ internal sealed class TeklaPhaseDataProvider
         bool useVisibleViewsForSearch,
         ILogger? log = null)
     {
+        var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
+        return LoadPhaseSnapshot(teklaContext, requiredColumns, includeAllPhases, searchScope, log);
+    }
+
+    public PhaseSnapshot LoadPhaseSnapshot(
+        SynchronizationContext? teklaContext,
+        IReadOnlyCollection<PhaseColumnConfig>? requiredColumns,
+        bool includeAllPhases,
+        PhaseSearchScope searchScope,
+        ILogger? log = null)
+    {
         var requested = RequiredSourceSet.FromColumns(requiredColumns);
         return TeklaContextDispatcher.Run(
                    teklaContext,
-                   () => CollectSnapshot(log, requested, includeAllPhases, useVisibleViewsForSearch),
+                   () => CollectSnapshot(log, requested, includeAllPhases, searchScope),
                    log,
                    noContextWarning: "PhaseVisualizer data load runs without Tekla synchronization context.",
                    sendFailedWarning: "PhaseVisualizer data load on Tekla context failed. Falling back to direct call.")
@@ -45,7 +51,7 @@ internal sealed class TeklaPhaseDataProvider
         ILogger? log,
         RequiredSourceSet requested,
         bool includeAllPhases,
-        bool useVisibleViewsForSearch)
+        PhaseSearchScope searchScope)
     {
         var model = LazyModelConnector.ModelInstance;
         if (model == null)
@@ -56,7 +62,7 @@ internal sealed class TeklaPhaseDataProvider
         var phases = CollectAllPhases(model);
         var phaseObjectCounts = BuildPhaseCountMapByPhaseFilter(model, phases, log);
 
-        var attributeScanScope = ResolveAttributeScanScope(useVisibleViewsForSearch);
+        var attributeScanScope = searchScope;
         if (requested.RequiresAttributeScan)
         {
             var records = CollectAttributeScanRecords(model, log, requested, attributeScanScope);
@@ -104,20 +110,13 @@ internal sealed class TeklaPhaseDataProvider
         };
     }
 
-    private static AttributeScanScope ResolveAttributeScanScope(bool useVisibleViewsForSearch)
-    {
-        return useVisibleViewsForSearch
-            ? AttributeScanScope.VisibleViews
-            : AttributeScanScope.TeklaModel;
-    }
-
     private static List<PhaseObjectRecord> CollectAttributeScanRecords(
         Model model,
         ILogger? log,
         RequiredSourceSet requested,
-        AttributeScanScope scope)
+        PhaseSearchScope scope)
     {
-        return scope == AttributeScanScope.VisibleViews
+        return scope == PhaseSearchScope.VisibleViews
             ? CollectVisibleViewParts(model, log, requested)
             : CollectTeklaModelParts(model, log, requested);
     }
@@ -125,7 +124,7 @@ internal sealed class TeklaPhaseDataProvider
     private static void LogSnapshotSummary(
         ILogger? log,
         bool requiresAttributeScan,
-        AttributeScanScope attributeScanScope,
+        PhaseSearchScope attributeScanScope,
         int phaseRowCount,
         int recordsCount,
         IReadOnlyDictionary<int, int> phaseObjectCounts)

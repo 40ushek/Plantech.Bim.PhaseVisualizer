@@ -56,10 +56,11 @@ internal sealed class PhaseLoadWorkflowController
         var effectiveUseVisibleViewsForSearch = shouldApplyUseVisibleViewsForSearch
             ? restoredUseVisibleViewsForSearch
             : currentUseVisibleViewsForSearch;
+        var effectiveSearchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(effectiveUseVisibleViewsForSearch);
 
         var resolvedContext = _contextLoadController.Resolve(
             forceReloadFromModel,
-            effectiveUseVisibleViewsForSearch,
+            effectiveSearchScope,
             stateFilePath);
         stateFilePath = resolvedContext.StateFilePath;
         if (!string.Equals(loadedStatePath, stateFilePath, StringComparison.OrdinalIgnoreCase))
