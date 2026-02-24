@@ -26,9 +26,9 @@ internal sealed class PhaseLoadWorkflowController
         bool forceReloadFromModel,
         string? currentStateFilePath,
         bool currentShowAllPhases,
-        bool currentUseVisibleViewsForSearch,
+        bool currentSearchScopeFlag,
         bool isRestoringShowAllPhases,
-        bool isRestoringUseVisibleViewsForSearch)
+        bool isRestoringSearchScope)
     {
         var stateFilePath = currentStateFilePath ?? string.Empty;
         if (restoreFromState && string.IsNullOrWhiteSpace(stateFilePath))
@@ -49,13 +49,13 @@ internal sealed class PhaseLoadWorkflowController
 
         var shouldApplySearchScope = _stateController.TryGetRestoredUseVisibleViewsForSearch(
             restoreFromState,
-            isRestoringUseVisibleViewsForSearch,
+            isRestoringSearchScope,
             persistedState,
-            currentUseVisibleViewsForSearch,
+            currentSearchScopeFlag,
             out var restoredUseVisibleViewsForSearch);
         var effectiveUseVisibleViewsForSearch = shouldApplySearchScope
             ? restoredUseVisibleViewsForSearch
-            : currentUseVisibleViewsForSearch;
+            : currentSearchScopeFlag;
         var effectiveSearchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(effectiveUseVisibleViewsForSearch);
 
         var resolvedContext = _contextLoadController.Resolve(
