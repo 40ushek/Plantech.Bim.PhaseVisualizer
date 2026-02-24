@@ -28,24 +28,7 @@ internal sealed class PhaseFilterExpressionBuilder
         var result = new BinaryFilterExpressionCollection();
         foreach (var criteria in normalizedSelection)
         {
-            var phaseGroup = new BinaryFilterExpressionCollection();
-
-            AddAndFilter(
-                phaseGroup,
-                BuildIntegerExpression(
-                    new ObjectFilterExpressions.Phase(),
-                    "equals",
-                    criteria.PhaseNumber));
-
-            foreach (var attributeFilter in criteria.AttributeFilters)
-            {
-                AddAndFilter(
-                    phaseGroup,
-                    BuildAttributeExpression(
-                        attributeFilter,
-                        criteria.PhaseNumber,
-                        diagnosticList));
-            }
+            var phaseGroup = BuildPhaseGroup(criteria, diagnosticList);
 
             if (phaseGroup.Count > 0)
             {
@@ -57,6 +40,32 @@ internal sealed class PhaseFilterExpressionBuilder
 
         diagnostics = diagnosticList;
         return result;
+    }
+
+    private static BinaryFilterExpressionCollection BuildPhaseGroup(
+        PhaseSelectionCriteria criteria,
+        IList<string> diagnostics)
+    {
+        var phaseGroup = new BinaryFilterExpressionCollection();
+
+        AddAndFilter(
+            phaseGroup,
+            BuildIntegerExpression(
+                new ObjectFilterExpressions.Phase(),
+                "equals",
+                criteria.PhaseNumber));
+
+        foreach (var attributeFilter in criteria.AttributeFilters)
+        {
+            AddAndFilter(
+                phaseGroup,
+                BuildAttributeExpression(
+                    attributeFilter,
+                    criteria.PhaseNumber,
+                    diagnostics));
+        }
+
+        return phaseGroup;
     }
 
     private static void AddAndFilter(BinaryFilterExpressionCollection target, FilterExpression? expression)
@@ -253,37 +262,72 @@ internal sealed class PhaseFilterExpressionBuilder
             return null;
         }
 
-        if (IsNumericOperation(clause.Operation))
+        if (TryBuildStrictNumericRuleExpression(clause, values, phaseNumber, diagnostics, out var strictNumericExpression))
         {
-            if (!TryParseNumericValues(values, out var numericValues))
-            {
-                diagnostics.Add(
-                    $"Phase {phaseNumber}: applyRule for field '{clause.Field}' expects numeric value(s), got '{string.Join(", ", values)}'.");
-                return null;
-            }
-
-            return BuildNumberExpression(
-                new TemplateFilterExpressions.CustomNumber(clause.Field),
-                clause.Operation,
-                numericValues);
+            return strictNumericExpression;
         }
 
-        if (clause.Operation is ApplyRuleOperation.Eq or ApplyRuleOperation.Neq or ApplyRuleOperation.In)
+        if (TryBuildPreferredNumericRuleExpression(clause, valueType, values, out var preferredNumericExpression))
         {
-            var preferNumeric = valueType is PhaseValueType.Integer or PhaseValueType.Number or PhaseValueType.Boolean;
-            if (preferNumeric && TryParseNumericValues(values, out var numericValues))
-            {
-                return BuildNumberExpression(
-                    new TemplateFilterExpressions.CustomNumber(clause.Field),
-                    clause.Operation,
-                    numericValues);
-            }
+            return preferredNumericExpression;
         }
 
         return BuildStringExpression(
             new TemplateFilterExpressions.CustomString(clause.Field),
             ConvertOperationToString(clause.Operation),
             values);
+    }
+
+    private static bool TryBuildStrictNumericRuleExpression(
+        ApplyRuleClauseRuntime clause,
+        IReadOnlyList<string> values,
+        int phaseNumber,
+        IList<string> diagnostics,
+        out FilterExpression? expression)
+    {
+        expression = null;
+        if (!IsNumericOperation(clause.Operation))
+        {
+            return false;
+        }
+
+        if (!TryParseNumericValues(values, out var numericValues))
+        {
+            diagnostics.Add(
+                $"Phase {phaseNumber}: applyRule for field '{clause.Field}' expects numeric value(s), got '{string.Join(", ", values)}'.");
+            return true;
+        }
+
+        expression = BuildNumberExpression(
+            new TemplateFilterExpressions.CustomNumber(clause.Field),
+            clause.Operation,
+            numericValues);
+        return true;
+    }
+
+    private static bool TryBuildPreferredNumericRuleExpression(
+        ApplyRuleClauseRuntime clause,
+        PhaseValueType valueType,
+        IReadOnlyList<string> values,
+        out FilterExpression? expression)
+    {
+        expression = null;
+        if (clause.Operation is not (ApplyRuleOperation.Eq or ApplyRuleOperation.Neq or ApplyRuleOperation.In))
+        {
+            return false;
+        }
+
+        var preferNumeric = valueType is PhaseValueType.Integer or PhaseValueType.Number or PhaseValueType.Boolean;
+        if (!preferNumeric || !TryParseNumericValues(values, out var numericValues))
+        {
+            return false;
+        }
+
+        expression = BuildNumberExpression(
+            new TemplateFilterExpressions.CustomNumber(clause.Field),
+            clause.Operation,
+            numericValues);
+        return true;
     }
 
     private static IReadOnlyList<string> ResolveRuleValues(ApplyRuleClauseRuntime clause, string? inputValue)
