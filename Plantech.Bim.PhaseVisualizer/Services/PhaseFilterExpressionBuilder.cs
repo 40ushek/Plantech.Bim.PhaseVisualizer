@@ -216,20 +216,13 @@ internal sealed class PhaseFilterExpressionBuilder
         int phaseNumber,
         IList<string> diagnostics)
     {
-        if (!attributeFilter.TargetObjectType.HasValue)
-        {
-            diagnostics.Add(
-                $"Phase {phaseNumber}: targetObjectType is required for '{attributeFilter.TargetAttribute}', filter ignored.");
-            return null;
-        }
-
-        if (!TryResolveTemplateStringField(
-                attributeFilter.TargetObjectType.Value,
+        if (!TryResolveGenericTemplateField(
+                attributeFilter,
                 targetAttribute,
+                phaseNumber,
+                diagnostics,
                 out var templateField))
         {
-            diagnostics.Add(
-                $"Phase {phaseNumber}: invalid target '{attributeFilter.TargetObjectType}.{attributeFilter.TargetAttribute}', filter ignored.");
             return null;
         }
 
@@ -244,6 +237,34 @@ internal sealed class PhaseFilterExpressionBuilder
             new TemplateFilterExpressions.CustomString(templateField),
             operation,
             values);
+    }
+
+    private static bool TryResolveGenericTemplateField(
+        PhaseAttributeFilter attributeFilter,
+        string targetAttribute,
+        int phaseNumber,
+        IList<string> diagnostics,
+        out string templateField)
+    {
+        templateField = string.Empty;
+        if (!attributeFilter.TargetObjectType.HasValue)
+        {
+            diagnostics.Add(
+                $"Phase {phaseNumber}: targetObjectType is required for '{attributeFilter.TargetAttribute}', filter ignored.");
+            return false;
+        }
+
+        if (TryResolveTemplateStringField(
+                attributeFilter.TargetObjectType.Value,
+                targetAttribute,
+                out templateField))
+        {
+            return true;
+        }
+
+        diagnostics.Add(
+            $"Phase {phaseNumber}: invalid target '{attributeFilter.TargetObjectType}.{attributeFilter.TargetAttribute}', filter ignored.");
+        return false;
     }
 
     private static bool TryResolveTemplateStringField(

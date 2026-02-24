@@ -147,4 +147,62 @@ public sealed class ApplyRuleBehaviorTests
             diagnostics,
             d => d.IndexOf("unsupported applyRule op", System.StringComparison.OrdinalIgnoreCase) >= 0);
     }
+
+    [Fact]
+    public void PhaseFilterExpressionBuilder_AddsDiagnostic_WhenTargetObjectTypeMissing_ForGenericAttribute()
+    {
+        var builder = new PhaseFilterExpressionBuilder();
+        var selection = new[]
+        {
+            new PhaseSelectionCriteria
+            {
+                PhaseNumber = 122,
+                AttributeFilters = new List<PhaseAttributeFilter>
+                {
+                    new()
+                    {
+                        TargetAttribute = "CUSTOM.HasBooleans",
+                        ValueType = PhaseValueType.String,
+                        Value = "1",
+                    },
+                },
+            },
+        };
+
+        var result = builder.Build(selection, out var diagnostics);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(diagnostics);
+        Assert.Contains(
+            diagnostics,
+            d => d.IndexOf("targetObjectType is required", System.StringComparison.OrdinalIgnoreCase) >= 0);
+    }
+
+    [Fact]
+    public void PhaseFilterExpressionBuilder_DoesNotReportDiagnostic_ForDynamicCustomFieldFallback()
+    {
+        var builder = new PhaseFilterExpressionBuilder();
+        var selection = new[]
+        {
+            new PhaseSelectionCriteria
+            {
+                PhaseNumber = 122,
+                AttributeFilters = new List<PhaseAttributeFilter>
+                {
+                    new()
+                    {
+                        TargetObjectType = PhaseColumnObjectType.Part,
+                        TargetAttribute = "CUSTOM.HasBooleans",
+                        ValueType = PhaseValueType.String,
+                        Value = "1",
+                    },
+                },
+            },
+        };
+
+        var result = builder.Build(selection, out var diagnostics);
+
+        Assert.NotNull(result);
+        Assert.Empty(diagnostics);
+    }
 }
