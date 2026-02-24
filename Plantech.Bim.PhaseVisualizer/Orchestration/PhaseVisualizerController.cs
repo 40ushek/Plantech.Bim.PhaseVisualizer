@@ -130,7 +130,6 @@ internal sealed class PhaseVisualizerController
         var safeModelConfigDirectory = modelConfigDirectory ?? string.Empty;
         var modelPath = ResolveModelPathFromConfigDirectory(safeModelConfigDirectory);
         return new ContextPaths(
-            modelPath,
             safeModelConfigDirectory,
             BuildStateFilePath(modelPath));
     }
@@ -186,25 +185,19 @@ internal sealed class PhaseVisualizerController
         {
             var normalized = Path.GetFullPath(modelConfigDirectory)
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var leaf = Path.GetFileName(normalized);
-            if (leaf.Equals(ConfigDirectoryName, StringComparison.OrdinalIgnoreCase))
+
+            if (TryResolveFromPlantechConfigDirectory(normalized, out var modelPathFromPlantech))
             {
-                var modelPath = Path.GetFullPath(Path.Combine(normalized, ".."));
-                return Directory.Exists(modelPath) ? modelPath : string.Empty;
+                return EnsureExistingDirectory(modelPathFromPlantech);
             }
 
             // Legacy fallback for old external callers still passing <model>\.mpd\menu.
-            if (leaf.Equals("menu", StringComparison.OrdinalIgnoreCase))
+            if (TryResolveFromLegacyMenuDirectory(normalized, out var modelPathFromLegacyMenu))
             {
-                var maybeMpdPath = Path.GetFullPath(Path.Combine(normalized, ".."));
-                if (Path.GetFileName(maybeMpdPath).Equals(".mpd", StringComparison.OrdinalIgnoreCase))
-                {
-                    var modelPath = Path.GetFullPath(Path.Combine(maybeMpdPath, ".."));
-                    return Directory.Exists(modelPath) ? modelPath : string.Empty;
-                }
+                return EnsureExistingDirectory(modelPathFromLegacyMenu);
             }
 
-            return Directory.Exists(normalized) ? normalized : string.Empty;
+            return EnsureExistingDirectory(normalized);
         }
         catch
         {
@@ -212,23 +205,57 @@ internal sealed class PhaseVisualizerController
         }
     }
 
+    private static bool TryResolveFromPlantechConfigDirectory(string normalizedConfigDirectory, out string modelPath)
+    {
+        modelPath = string.Empty;
+        var leaf = Path.GetFileName(normalizedConfigDirectory);
+        if (!leaf.Equals(ConfigDirectoryName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        modelPath = Path.GetFullPath(Path.Combine(normalizedConfigDirectory, ".."));
+        return true;
+    }
+
+    private static bool TryResolveFromLegacyMenuDirectory(string normalizedConfigDirectory, out string modelPath)
+    {
+        modelPath = string.Empty;
+        var leaf = Path.GetFileName(normalizedConfigDirectory);
+        if (!leaf.Equals("menu", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var maybeMpdPath = Path.GetFullPath(Path.Combine(normalizedConfigDirectory, ".."));
+        if (!Path.GetFileName(maybeMpdPath).Equals(".mpd", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        modelPath = Path.GetFullPath(Path.Combine(maybeMpdPath, ".."));
+        return true;
+    }
+
+    private static string EnsureExistingDirectory(string path)
+    {
+        return Directory.Exists(path) ? path : string.Empty;
+    }
+
     private readonly struct ContextPaths
     {
-        public ContextPaths(string modelPath, string modelConfigDirectory, string stateFilePath)
+        public ContextPaths(string modelConfigDirectory, string stateFilePath)
         {
-            ModelPath = modelPath;
             ModelConfigDirectory = modelConfigDirectory;
             StateFilePath = stateFilePath;
         }
 
-        public string ModelPath { get; }
         public string ModelConfigDirectory { get; }
         public string StateFilePath { get; }
 
         public static ContextPaths FromModelPath(string modelPath)
         {
             return new ContextPaths(
-                modelPath,
                 BuildModelConfigDirectory(modelPath),
                 BuildStateFilePath(modelPath));
         }
