@@ -84,46 +84,105 @@ internal sealed class PhaseFilterExpressionBuilder
         var targetAttribute = attributeFilter.TargetAttribute.Trim();
         var normalizedTargetAttribute = targetAttribute.ToLowerInvariant();
 
-        if (attributeFilter.ApplyRule != null)
+        if (TryBuildConfiguredRuleExpression(attributeFilter, phaseNumber, diagnostics, out var configuredRuleExpression))
         {
-            if (!ApplyRuleCompiler.TryCompile(attributeFilter, out var compiledClause, out var compileDiagnostic))
-            {
-                if (!string.IsNullOrWhiteSpace(compileDiagnostic))
-                {
-                    diagnostics.Add($"Phase {phaseNumber}: {compileDiagnostic}");
-                }
-
-                return null;
-            }
-
-            if (compiledClause == null)
-            {
-                return null;
-            }
-
-            return BuildRuntimeClauseExpression(compiledClause, attributeFilter.ValueType, attributeFilter.Value, phaseNumber, diagnostics);
+            return configuredRuleExpression;
         }
 
-        if (LegacyApplyRuleMapper.TryMap(attributeFilter, out var mappedLegacyClause))
+        if (TryBuildLegacyMappedExpression(attributeFilter, phaseNumber, diagnostics, out var legacyMappedExpression))
         {
-            return mappedLegacyClause == null
-                ? null
-                : BuildRuntimeClauseExpression(mappedLegacyClause, attributeFilter.ValueType, attributeFilter.Value, phaseNumber, diagnostics);
+            return legacyMappedExpression;
         }
 
-        if (normalizedTargetAttribute == ExcludeGratingsAttribute)
+        if (TryBuildLegacyExcludeGratingsExpression(attributeFilter, normalizedTargetAttribute, out var legacyExcludeGratingsExpression))
         {
-            if (!IsTruthy(attributeFilter.Value))
+            return legacyExcludeGratingsExpression;
+        }
+
+        return BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
+    }
+
+    private static bool TryBuildConfiguredRuleExpression(
+        PhaseAttributeFilter attributeFilter,
+        int phaseNumber,
+        IList<string> diagnostics,
+        out FilterExpression? expression)
+    {
+        expression = null;
+        if (attributeFilter.ApplyRule == null)
+        {
+            return false;
+        }
+
+        if (!ApplyRuleCompiler.TryCompile(attributeFilter, out var compiledClause, out var compileDiagnostic))
+        {
+            if (!string.IsNullOrWhiteSpace(compileDiagnostic))
             {
-                return null;
+                diagnostics.Add($"Phase {phaseNumber}: {compileDiagnostic}");
             }
 
-            return BuildScopedProfileStringExpression(
-                attributeFilter.TargetObjectType,
-                "notStartsWith",
-                new[] { "GIRO" });
+            return true;
         }
 
+        if (compiledClause == null)
+        {
+            return true;
+        }
+
+        expression = BuildRuntimeClauseExpression(compiledClause, attributeFilter.ValueType, attributeFilter.Value, phaseNumber, diagnostics);
+        return true;
+    }
+
+    private static bool TryBuildLegacyMappedExpression(
+        PhaseAttributeFilter attributeFilter,
+        int phaseNumber,
+        IList<string> diagnostics,
+        out FilterExpression? expression)
+    {
+        expression = null;
+        if (!LegacyApplyRuleMapper.TryMap(attributeFilter, out var mappedLegacyClause))
+        {
+            return false;
+        }
+
+        if (mappedLegacyClause == null)
+        {
+            return true;
+        }
+
+        expression = BuildRuntimeClauseExpression(mappedLegacyClause, attributeFilter.ValueType, attributeFilter.Value, phaseNumber, diagnostics);
+        return true;
+    }
+
+    private static bool TryBuildLegacyExcludeGratingsExpression(
+        PhaseAttributeFilter attributeFilter,
+        string normalizedTargetAttribute,
+        out FilterExpression? expression)
+    {
+        expression = null;
+        if (normalizedTargetAttribute != ExcludeGratingsAttribute)
+        {
+            return false;
+        }
+
+        if (!IsTruthy(attributeFilter.Value))
+        {
+            return true;
+        }
+
+        expression = BuildScopedProfileStringExpression(
+            attributeFilter.TargetObjectType,
+            "notStartsWith",
+            new[] { "GIRO" });
+        return true;
+    }
+
+    private static FilterExpression? BuildGenericTargetAttributeExpression(
+        PhaseAttributeFilter attributeFilter,
+        string targetAttribute,
+        int phaseNumber,
+        IList<string> diagnostics)
+    {
         if (!attributeFilter.TargetObjectType.HasValue)
         {
             diagnostics.Add(
@@ -688,4 +747,3 @@ internal sealed class PhaseFilterExpressionBuilder
     }
 
 }
-
