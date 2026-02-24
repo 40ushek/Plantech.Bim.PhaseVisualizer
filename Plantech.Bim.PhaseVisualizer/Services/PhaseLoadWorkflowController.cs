@@ -47,13 +47,13 @@ internal sealed class PhaseLoadWorkflowController
             out var restoredShowAllPhases);
         var effectiveShowAllPhases = shouldApplyShowAllPhases ? restoredShowAllPhases : currentShowAllPhases;
 
-        var shouldApplyUseVisibleViewsForSearch = _stateController.TryGetRestoredUseVisibleViewsForSearch(
+        var shouldApplySearchScope = _stateController.TryGetRestoredUseVisibleViewsForSearch(
             restoreFromState,
             isRestoringUseVisibleViewsForSearch,
             persistedState,
             currentUseVisibleViewsForSearch,
             out var restoredUseVisibleViewsForSearch);
-        var effectiveUseVisibleViewsForSearch = shouldApplyUseVisibleViewsForSearch
+        var effectiveUseVisibleViewsForSearch = shouldApplySearchScope
             ? restoredUseVisibleViewsForSearch
             : currentUseVisibleViewsForSearch;
         var effectiveSearchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(effectiveUseVisibleViewsForSearch);
@@ -75,7 +75,7 @@ internal sealed class PhaseLoadWorkflowController
             resolvedContext.HasStateFilePathChanged,
             shouldApplyShowAllPhases,
             effectiveShowAllPhases,
-            shouldApplyUseVisibleViewsForSearch,
+            shouldApplySearchScope,
             effectiveSearchScope);
     }
 }
@@ -89,7 +89,7 @@ internal sealed class PhaseLoadWorkflowResult
         bool hasStateFilePathChanged,
         bool shouldApplyShowAllPhases,
         bool showAllPhases,
-        bool shouldApplyUseVisibleViewsForSearch,
+        bool shouldApplySearchScope,
         PhaseSearchScope searchScope)
     {
         Context = context ?? throw new ArgumentNullException(nameof(context));
@@ -98,7 +98,7 @@ internal sealed class PhaseLoadWorkflowResult
         HasStateFilePathChanged = hasStateFilePathChanged;
         ShouldApplyShowAllPhases = shouldApplyShowAllPhases;
         ShowAllPhases = showAllPhases;
-        ShouldApplyUseVisibleViewsForSearch = shouldApplyUseVisibleViewsForSearch;
+        ShouldApplySearchScope = shouldApplySearchScope;
         SearchScope = searchScope;
     }
 
@@ -114,7 +114,7 @@ internal sealed class PhaseLoadWorkflowResult
 
     public bool ShowAllPhases { get; }
 
-    public bool ShouldApplyUseVisibleViewsForSearch { get; }
+    public bool ShouldApplySearchScope { get; }
 
     public PhaseSearchScope SearchScope { get; }
 }

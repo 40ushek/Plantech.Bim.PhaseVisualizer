@@ -216,7 +216,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             }
         }
 
-        if (loadResult.ShouldApplyUseVisibleViewsForSearch)
+        if (loadResult.ShouldApplySearchScope)
         {
             try
             {
