@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plantech.Bim.PhaseVisualize
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plantech.Bim.PhaseVisualizer.Host", "Plantech.Bim.PhaseVisualizer.Host\Plantech.Bim.PhaseVisualizer.Host.csproj", "{08416C4F-835A-41F7-BEA8-F48564E7F434}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plantech.Bim.PhaseVisualizer.Tests", "Plantech.Bim.PhaseVisualizer.Tests\Plantech.Bim.PhaseVisualizer.Tests.csproj", "{79C581B3-495C-46A8-A578-A76B534A98D4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{08416C4F-835A-41F7-BEA8-F48564E7F434}.Release|x64.Build.0 = Release|Any CPU
 		{08416C4F-835A-41F7-BEA8-F48564E7F434}.Release|x86.ActiveCfg = Release|Any CPU
 		{08416C4F-835A-41F7-BEA8-F48564E7F434}.Release|x86.Build.0 = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|x64.Build.0 = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Debug|x86.Build.0 = Debug|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|x64.ActiveCfg = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|x64.Build.0 = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|x86.ActiveCfg = Release|Any CPU
+		{79C581B3-495C-46A8-A578-A76B534A98D4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
