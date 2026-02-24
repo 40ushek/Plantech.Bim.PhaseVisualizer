@@ -98,17 +98,41 @@ internal sealed class PhaseFilterExpressionBuilder
             return configuredRuleExpression;
         }
 
-        if (TryBuildLegacyMappedExpression(attributeFilter, phaseNumber, diagnostics, out var legacyMappedExpression))
+        if (TryBuildLegacyExpression(
+                attributeFilter,
+                normalizedTargetAttribute,
+                phaseNumber,
+                diagnostics,
+                out var legacyExpression))
         {
-            return legacyMappedExpression;
-        }
-
-        if (TryBuildLegacyExcludeGratingsExpression(attributeFilter, normalizedTargetAttribute, out var legacyExcludeGratingsExpression))
-        {
-            return legacyExcludeGratingsExpression;
+            return legacyExpression;
         }
 
         return BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
+    }
+
+    private static bool TryBuildLegacyExpression(
+        PhaseAttributeFilter attributeFilter,
+        string normalizedTargetAttribute,
+        int phaseNumber,
+        IList<string> diagnostics,
+        out FilterExpression? expression)
+    {
+        expression = null;
+
+        if (TryBuildLegacyMappedExpression(attributeFilter, phaseNumber, diagnostics, out var mappedExpression))
+        {
+            expression = mappedExpression;
+            return true;
+        }
+
+        if (TryBuildLegacyExcludeGratingsExpression(attributeFilter, normalizedTargetAttribute, out var excludeGratingsExpression))
+        {
+            expression = excludeGratingsExpression;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryBuildConfiguredRuleExpression(

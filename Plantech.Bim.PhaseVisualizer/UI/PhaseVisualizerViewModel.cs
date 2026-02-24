@@ -252,7 +252,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     public bool SavePreset()
     {
-        if (!_presetOperationContextController.TryCreate(PresetName, _stateFilePath, out var context))
+        if (!TryCreatePresetOperationContext(out var context))
         {
             return false;
         }
@@ -280,7 +280,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     public bool LoadPreset()
     {
-        if (!_presetOperationContextController.TryCreate(PresetName, _stateFilePath, out var context))
+        if (!TryCreatePresetOperationContext(out var context))
         {
             return false;
         }
@@ -320,7 +320,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     public bool DeletePreset()
     {
-        if (!_presetOperationContextController.TryCreate(PresetName, _stateFilePath, out var context))
+        if (!TryCreatePresetOperationContext(out var context))
         {
             return false;
         }
@@ -383,6 +383,11 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             _columns,
             SelectedColumnKey,
             PhaseNumberColumnKey);
+    }
+
+    private bool TryCreatePresetOperationContext(out PhasePresetOperationContext context)
+    {
+        return _presetOperationContextController.TryCreate(PresetName, _stateFilePath, out context);
     }
 
     private void CompletePresetMutation(
