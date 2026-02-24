@@ -18,6 +18,11 @@ namespace Plantech.Bim.PhaseVisualizer.Services;
 internal sealed class TeklaPhaseDataProvider
 {
     private const string UdaPrefix = "part.ua.";
+    private enum AttributeScanScope
+    {
+        TeklaModel,
+        VisibleViews,
+    }
 
     public PhaseSnapshot LoadPhaseSnapshot(
         SynchronizationContext? teklaContext,
@@ -51,14 +56,21 @@ internal sealed class TeklaPhaseDataProvider
         var phases = CollectAllPhases(model);
         var phaseObjectCounts = BuildPhaseCountMapByPhaseFilter(model, phases, log);
 
+        var attributeScanScope = ResolveAttributeScanScope(useVisibleViewsForSearch);
         if (requested.RequiresAttributeScan)
         {
-            var records = useVisibleViewsForSearch
-                ? CollectVisibleViewParts(model, log, requested)
-                : CollectTeklaModelParts(model, log, requested);
+            var records = CollectAttributeScanRecords(model, log, requested, attributeScanScope);
             var allPhases = includeAllPhases
                 ? phases
                 : Array.Empty<PhaseCatalogEntry>();
+
+            LogSnapshotSummary(
+                log,
+                requested.RequiresAttributeScan,
+                attributeScanScope,
+                allPhases.Count,
+                records.Count,
+                phaseObjectCounts);
 
             return new PhaseSnapshot
             {
@@ -75,6 +87,14 @@ internal sealed class TeklaPhaseDataProvider
                 .Where(p => phaseObjectCounts.TryGetValue(p.PhaseNumber, out var count) && count > 0)
                 .ToList();
 
+        LogSnapshotSummary(
+            log,
+            requested.RequiresAttributeScan,
+            attributeScanScope,
+            filteredPhases.Count,
+            0,
+            phaseObjectCounts);
+
         return new PhaseSnapshot
         {
             CreatedAtUtc = DateTime.UtcNow,
@@ -82,6 +102,47 @@ internal sealed class TeklaPhaseDataProvider
             AllPhases = filteredPhases,
             PhaseObjectCounts = phaseObjectCounts,
         };
+    }
+
+    private static AttributeScanScope ResolveAttributeScanScope(bool useVisibleViewsForSearch)
+    {
+        return useVisibleViewsForSearch
+            ? AttributeScanScope.VisibleViews
+            : AttributeScanScope.TeklaModel;
+    }
+
+    private static List<PhaseObjectRecord> CollectAttributeScanRecords(
+        Model model,
+        ILogger? log,
+        RequiredSourceSet requested,
+        AttributeScanScope scope)
+    {
+        return scope == AttributeScanScope.VisibleViews
+            ? CollectVisibleViewParts(model, log, requested)
+            : CollectTeklaModelParts(model, log, requested);
+    }
+
+    private static void LogSnapshotSummary(
+        ILogger? log,
+        bool requiresAttributeScan,
+        AttributeScanScope attributeScanScope,
+        int phaseRowCount,
+        int recordsCount,
+        IReadOnlyDictionary<int, int> phaseObjectCounts)
+    {
+        if (log == null)
+        {
+            return;
+        }
+
+        var nonEmptyPhaseCount = phaseObjectCounts?.Count ?? 0;
+        log.Information(
+            "PhaseVisualizer snapshot built. AttributeScanRequired={RequiresAttributeScan}, AttributeScanScope={AttributeScanScope}, RowCount={RowCount}, Records={Records}, NonEmptyPhaseCount={NonEmptyPhaseCount}, CountScope=ModelWide",
+            requiresAttributeScan,
+            attributeScanScope,
+            phaseRowCount,
+            recordsCount,
+            nonEmptyPhaseCount);
     }
 
     private static IReadOnlyDictionary<int, int> BuildPhaseCountMapByPhaseFilter(
@@ -595,4 +656,3 @@ internal sealed class TeklaPhaseDataProvider
         }
     }
 }
-
