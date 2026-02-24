@@ -29,7 +29,7 @@ internal sealed class PhaseLoadedContextController
         PhaseVisualizerContext context,
         PhaseTableState? persistedState,
         bool showAllPhases,
-        bool useVisibleViewsForSearch,
+        PhaseSearchScope searchScope,
         string selectedColumnKey,
         string phaseNumberColumnKey)
     {
@@ -76,7 +76,7 @@ internal sealed class PhaseLoadedContextController
             table.Rows.Count,
             effectiveContext.SnapshotMeta.ObjectCount,
             showAllPhases,
-            useVisibleViewsForSearch);
+            searchScope);
 
         return new PhaseLoadedContextResult(columns, statusText);
     }

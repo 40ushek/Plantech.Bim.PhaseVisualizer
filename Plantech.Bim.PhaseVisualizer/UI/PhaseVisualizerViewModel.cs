@@ -240,7 +240,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             context,
             persistedState,
             ShowAllPhases,
-            UseVisibleViewsForSearch,
+            PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
             SelectedColumnKey,
             PhaseNumberColumnKey);
 

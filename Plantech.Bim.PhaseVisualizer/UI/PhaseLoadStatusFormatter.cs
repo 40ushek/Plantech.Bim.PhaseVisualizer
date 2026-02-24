@@ -1,3 +1,5 @@
+using Plantech.Bim.PhaseVisualizer.Domain;
+
 namespace Plantech.Bim.PhaseVisualizer.UI;
 
 internal static class PhaseLoadStatusFormatter
@@ -6,9 +8,9 @@ internal static class PhaseLoadStatusFormatter
         int visibleRowCount,
         int objectCount,
         bool showAllPhases,
-        bool useVisibleViewsForSearch)
+        PhaseSearchScope searchScope)
     {
-        var scope = useVisibleViewsForSearch ? "Visible views" : "Tekla model";
+        var scope = searchScope == PhaseSearchScope.VisibleViews ? "Visible views" : "Tekla model";
         return showAllPhases
             ? $"Rows: {visibleRowCount} (all phases), Objects: {objectCount}, Scope: {scope}"
             : $"Rows: {visibleRowCount}, Objects: {objectCount}, Scope: {scope}";
