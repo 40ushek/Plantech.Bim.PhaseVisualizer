@@ -11,11 +11,13 @@ internal sealed class PhaseStateSnapshotController
         PhaseTableState? persistedState,
         bool showAllPhases,
         bool useVisibleViewsForSearch,
+        bool showObjectCountInStatus,
         IReadOnlyCollection<PhaseTableRowState> rows)
     {
         var state = persistedState ?? new PhaseTableState();
         state.ShowAllPhases = showAllPhases;
         state.UseVisibleViewsForSearch = useVisibleViewsForSearch;
+        state.ShowObjectCountInStatus = showObjectCountInStatus;
         state.Rows = PhaseTableRowStateCloner.CloneOrdered(rows);
         state.Presets ??= new();
 

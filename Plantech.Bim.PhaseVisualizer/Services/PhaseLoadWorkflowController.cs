@@ -27,7 +27,9 @@ internal sealed class PhaseLoadWorkflowController
         string? currentStateFilePath,
         bool currentShowAllPhases,
         PhaseSearchScope currentSearchScope,
+        bool currentShowObjectCountInStatus,
         bool isRestoringShowAllPhases,
+        bool isRestoringShowObjectCountInStatus,
         bool isRestoringSearchScope)
     {
         var stateFilePath = currentStateFilePath ?? string.Empty;
@@ -47,6 +49,22 @@ internal sealed class PhaseLoadWorkflowController
             out var restoredShowAllPhases);
         var effectiveShowAllPhases = shouldApplyShowAllPhases ? restoredShowAllPhases : currentShowAllPhases;
 
+        var shouldApplyShowObjectCountInStatus = _stateController.TryGetRestoredShowObjectCountInStatus(
+            restoreFromState,
+            isRestoringShowObjectCountInStatus,
+            persistedState,
+            currentShowObjectCountInStatus,
+            out var restoredShowObjectCountInStatus);
+        var effectiveShowObjectCountInStatus = shouldApplyShowObjectCountInStatus
+            ? restoredShowObjectCountInStatus
+            : currentShowObjectCountInStatus;
+
+        if (!effectiveShowObjectCountInStatus)
+        {
+            effectiveShowAllPhases = true;
+            shouldApplyShowAllPhases = shouldApplyShowAllPhases || !currentShowAllPhases;
+        }
+
         var shouldApplySearchScope = _stateController.TryGetRestoredUseVisibleViewsForSearch(
             restoreFromState,
             isRestoringSearchScope,
@@ -59,7 +77,9 @@ internal sealed class PhaseLoadWorkflowController
 
         var resolvedContext = _contextLoadController.Resolve(
             forceReloadFromModel,
+            effectiveShowAllPhases,
             effectiveSearchScope,
+            effectiveShowObjectCountInStatus,
             stateFilePath);
         stateFilePath = resolvedContext.StateFilePath;
         if (!string.Equals(loadedStatePath, stateFilePath, StringComparison.OrdinalIgnoreCase))
@@ -74,6 +94,8 @@ internal sealed class PhaseLoadWorkflowController
             resolvedContext.HasStateFilePathChanged,
             shouldApplyShowAllPhases,
             effectiveShowAllPhases,
+            shouldApplyShowObjectCountInStatus,
+            effectiveShowObjectCountInStatus,
             shouldApplySearchScope,
             effectiveSearchScope);
     }
@@ -88,6 +110,8 @@ internal sealed class PhaseLoadWorkflowResult
         bool hasStateFilePathChanged,
         bool shouldApplyShowAllPhases,
         bool showAllPhases,
+        bool shouldApplyShowObjectCountInStatus,
+        bool showObjectCountInStatus,
         bool shouldApplySearchScope,
         PhaseSearchScope searchScope)
     {
@@ -97,6 +121,8 @@ internal sealed class PhaseLoadWorkflowResult
         HasStateFilePathChanged = hasStateFilePathChanged;
         ShouldApplyShowAllPhases = shouldApplyShowAllPhases;
         ShowAllPhases = showAllPhases;
+        ShouldApplyShowObjectCountInStatus = shouldApplyShowObjectCountInStatus;
+        ShowObjectCountInStatus = showObjectCountInStatus;
         ShouldApplySearchScope = shouldApplySearchScope;
         SearchScope = searchScope;
     }
@@ -112,6 +138,10 @@ internal sealed class PhaseLoadWorkflowResult
     public bool ShouldApplyShowAllPhases { get; }
 
     public bool ShowAllPhases { get; }
+
+    public bool ShouldApplyShowObjectCountInStatus { get; }
+
+    public bool ShowObjectCountInStatus { get; }
 
     public bool ShouldApplySearchScope { get; }
 

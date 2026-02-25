@@ -111,31 +111,44 @@
             SelectionMode="Extended"
             SelectionUnit="FullRow" />
 
-        <StackPanel
+        <DockPanel
             Grid.Row="2"
             Margin="0,10,0,0"
-            HorizontalAlignment="Right"
-            Orientation="Horizontal">
-            <Button
-                Width="100"
-                Margin="0,0,8,0"
-                Click="OpenLog_Click"
-                Content="Open Log" />
-            <Button
-                Width="100"
-                Margin="0,0,8,0"
-                Click="Refresh_Click"
-                Content="Refresh" />
-            <Button
-                Width="100"
-                Margin="0,0,8,0"
-                Click="Apply_Click"
-                Content="Apply" />
-            <Button
-                Width="100"
-                Click="Close_Click"
-                Content="Close" />
-        </StackPanel>
+            LastChildFill="False">
+            <CheckBox
+                x:Name="ShowObjectCountToggle"
+                DockPanel.Dock="Left"
+                VerticalAlignment="Center"
+                IsChecked="{Binding ShowObjectCountInStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                Checked="ShowObjectCountToggle_Changed"
+                Unchecked="ShowObjectCountToggle_Changed"
+                Content="Show object count in status (can be slow on large models)" />
+
+            <StackPanel
+                DockPanel.Dock="Right"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal">
+                <Button
+                    Width="100"
+                    Margin="0,0,8,0"
+                    Click="OpenLog_Click"
+                    Content="Open Log" />
+                <Button
+                    Width="100"
+                    Margin="0,0,8,0"
+                    Click="Refresh_Click"
+                    Content="Refresh" />
+                <Button
+                    Width="100"
+                    Margin="0,0,8,0"
+                    Click="Apply_Click"
+                    Content="Apply" />
+                <Button
+                    Width="100"
+                    Click="Close_Click"
+                    Content="Close" />
+            </StackPanel>
+        </DockPanel>
 
         <Border
             Grid.Row="3"

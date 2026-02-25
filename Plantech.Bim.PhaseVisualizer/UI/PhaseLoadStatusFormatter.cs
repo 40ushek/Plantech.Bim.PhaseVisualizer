@@ -8,11 +8,19 @@ internal static class PhaseLoadStatusFormatter
         int visibleRowCount,
         int objectCount,
         bool showAllPhases,
-        PhaseSearchScope searchScope)
+        PhaseSearchScope searchScope,
+        bool showObjectCount)
     {
         var scope = searchScope == PhaseSearchScope.VisibleViews ? "Visible views" : "Tekla model";
+        if (showObjectCount)
+        {
+            return showAllPhases
+                ? $"Rows: {visibleRowCount} (all phases), Objects: {objectCount}, Scope: {scope}"
+                : $"Rows: {visibleRowCount}, Objects: {objectCount}, Scope: {scope}";
+        }
+
         return showAllPhases
-            ? $"Rows: {visibleRowCount} (all phases), Objects: {objectCount}, Scope: {scope}"
-            : $"Rows: {visibleRowCount}, Objects: {objectCount}, Scope: {scope}";
+            ? $"Rows: {visibleRowCount} (all phases), Scope: {scope}"
+            : $"Rows: {visibleRowCount}, Scope: {scope}";
     }
 }

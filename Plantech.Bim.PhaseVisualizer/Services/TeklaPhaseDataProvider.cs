@@ -24,10 +24,17 @@ internal sealed class TeklaPhaseDataProvider
         IReadOnlyCollection<PhaseColumnConfig>? requiredColumns,
         bool includeAllPhases,
         bool useVisibleViewsForSearch,
+        bool includePhaseObjectCounts = true,
         ILogger? log = null)
     {
         var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
-        return LoadPhaseSnapshot(teklaContext, requiredColumns, includeAllPhases, searchScope, log);
+        return LoadPhaseSnapshot(
+            teklaContext,
+            requiredColumns,
+            includeAllPhases,
+            searchScope,
+            includePhaseObjectCounts,
+            log);
     }
 
     public PhaseSnapshot LoadPhaseSnapshot(
@@ -35,12 +42,13 @@ internal sealed class TeklaPhaseDataProvider
         IReadOnlyCollection<PhaseColumnConfig>? requiredColumns,
         bool includeAllPhases,
         PhaseSearchScope searchScope,
+        bool includePhaseObjectCounts = true,
         ILogger? log = null)
     {
         var requested = RequiredSourceSet.FromColumns(requiredColumns);
         return TeklaContextDispatcher.Run(
                    teklaContext,
-                   () => CollectSnapshot(log, requested, includeAllPhases, searchScope),
+                   () => CollectSnapshot(log, requested, includeAllPhases, searchScope, includePhaseObjectCounts),
                    log,
                    noContextWarning: "PhaseVisualizer data load runs without Tekla synchronization context.",
                    sendFailedWarning: "PhaseVisualizer data load on Tekla context failed. Falling back to direct call.")
@@ -51,7 +59,8 @@ internal sealed class TeklaPhaseDataProvider
         ILogger? log,
         RequiredSourceSet requested,
         bool includeAllPhases,
-        PhaseSearchScope searchScope)
+        PhaseSearchScope searchScope,
+        bool includePhaseObjectCounts)
     {
         var model = LazyModelConnector.ModelInstance;
         if (model == null)
@@ -60,7 +69,9 @@ internal sealed class TeklaPhaseDataProvider
         }
 
         var phases = CollectAllPhases(model);
-        var phaseObjectCounts = BuildPhaseCountMapByPhaseFilter(model, phases, log);
+        var phaseObjectCounts = includePhaseObjectCounts
+            ? BuildPhaseCountMapByPhaseFilter(model, phases, log)
+            : new Dictionary<int, int>();
 
         var attributeScanScope = searchScope;
         if (requested.RequiresAttributeScan)
@@ -89,9 +100,11 @@ internal sealed class TeklaPhaseDataProvider
 
         var filteredPhases = includeAllPhases
             ? phases
-            : phases
-                .Where(p => phaseObjectCounts.TryGetValue(p.PhaseNumber, out var count) && count > 0)
-                .ToList();
+            : includePhaseObjectCounts
+                ? phases
+                    .Where(p => phaseObjectCounts.TryGetValue(p.PhaseNumber, out var count) && count > 0)
+                    .ToList()
+                : phases.ToList();
 
         LogSnapshotSummary(
             log,

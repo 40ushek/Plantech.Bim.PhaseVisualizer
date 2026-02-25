@@ -75,4 +75,25 @@ internal sealed class PhaseTableStateController
         restoredValue = persisted.Value;
         return true;
     }
+
+    public bool TryGetRestoredShowObjectCountInStatus(
+        bool restoreFromState,
+        bool isRestoring,
+        PhaseTableState? state,
+        bool currentValue,
+        out bool restoredValue)
+    {
+        restoredValue = currentValue;
+        var persisted = state?.ShowObjectCountInStatus;
+        if (!restoreFromState
+            || isRestoring
+            || !persisted.HasValue
+            || persisted.Value == currentValue)
+        {
+            return false;
+        }
+
+        restoredValue = persisted.Value;
+        return true;
+    }
 }

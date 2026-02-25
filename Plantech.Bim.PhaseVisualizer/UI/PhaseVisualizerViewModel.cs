@@ -37,11 +37,13 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private readonly Dictionary<int, PhaseTableRowState> _cachedRowStatesByPhase = new();
     private string _stateFilePath = string.Empty;
     private bool _isRestoringShowAllPhases;
+    private bool _isRestoringShowObjectCountInStatus;
     private bool _isRestoringUseVisibleViewsForSearch;
 
     private string _statusText = "Ready";
     private bool _showAllPhases;
     private bool _useVisibleViewsForSearch;
+    private bool _showObjectCountInStatus = false;
     private string _presetName = string.Empty;
     private List<string> _presetNames = new();
 
@@ -157,6 +159,21 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         Load(restoreShowAllPhasesFromState: true, forceReloadFromModel: false);
     }
 
+    public bool ShowObjectCountInStatus
+    {
+        get => _showObjectCountInStatus;
+        set
+        {
+            if (_showObjectCountInStatus == value)
+            {
+                return;
+            }
+
+            _showObjectCountInStatus = value;
+            OnPropertyChanged();
+        }
+    }
+
     public void Load(bool restoreShowAllPhasesFromState, bool forceReloadFromModel = false)
     {
         var loadResult = _loadWorkflowController.Execute(
@@ -165,7 +182,9 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             _stateFilePath,
             ShowAllPhases,
             PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
+            ShowObjectCountInStatus,
             _isRestoringShowAllPhases,
+            _isRestoringShowObjectCountInStatus,
             _isRestoringUseVisibleViewsForSearch);
 
         ApplyLoadResult(loadResult);
@@ -228,6 +247,19 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
                 _isRestoringUseVisibleViewsForSearch = false;
             }
         }
+
+        if (loadResult.ShouldApplyShowObjectCountInStatus)
+        {
+            try
+            {
+                _isRestoringShowObjectCountInStatus = true;
+                ShowObjectCountInStatus = loadResult.ShowObjectCountInStatus;
+            }
+            finally
+            {
+                _isRestoringShowObjectCountInStatus = false;
+            }
+        }
     }
 
     private void ApplyLoadedContext(
@@ -244,6 +276,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             persistedState,
             ShowAllPhases,
             searchScope,
+            ShowObjectCountInStatus,
             SelectedColumnKey,
             PhaseNumberColumnKey);
 
@@ -357,6 +390,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             _stateFilePath,
             ShowAllPhases,
             UseVisibleViewsForSearch,
+            ShowObjectCountInStatus,
             _cachedRowStatesByPhase.Values.ToList(),
             _log);
         ApplyPresetNamesState(state);

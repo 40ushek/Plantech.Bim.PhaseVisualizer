@@ -30,6 +30,7 @@ internal sealed class PhaseLoadedContextController
         PhaseTableState? persistedState,
         bool showAllPhases,
         PhaseSearchScope searchScope,
+        bool showObjectCount,
         string selectedColumnKey,
         string phaseNumberColumnKey)
     {
@@ -45,6 +46,12 @@ internal sealed class PhaseLoadedContextController
 
         var effectiveContext = context ?? new PhaseVisualizerContext();
         var columns = _columnsController.Build(effectiveContext.Config.Columns);
+        if (!showObjectCount)
+        {
+            columns = columns
+                .Where(column => column.Aggregate != PhaseAggregateType.Count)
+                .ToList();
+        }
 
         _rowStateCacheController.EnsureCache(
             rowCacheByPhase,
@@ -76,7 +83,8 @@ internal sealed class PhaseLoadedContextController
             table.Rows.Count,
             effectiveContext.SnapshotMeta.ObjectCount,
             showAllPhases,
-            searchScope);
+            searchScope,
+            showObjectCount);
 
         return new PhaseLoadedContextResult(columns, statusText);
     }

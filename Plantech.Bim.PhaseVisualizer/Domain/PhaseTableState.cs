@@ -7,6 +7,7 @@ internal sealed class PhaseTableState
     public int Version { get; set; } = 2;
     public bool? ShowAllPhases { get; set; }
     public bool? UseVisibleViewsForSearch { get; set; }
+    public bool? ShowObjectCountInStatus { get; set; }
     public List<PhaseTableRowState> Rows { get; set; } = new();
     public List<PhaseTablePresetState> Presets { get; set; } = new();
 }

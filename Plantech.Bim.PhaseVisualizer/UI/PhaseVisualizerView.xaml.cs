@@ -274,6 +274,20 @@ public partial class PhaseVisualizerView : UserControl
             forceReloadFromModel: false);
     }
 
+    private void ShowObjectCountToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null || _isReloadingRows)
+        {
+            return;
+        }
+
+        _viewModel.ShowObjectCountInStatus = ShowObjectCountToggle.IsChecked == true;
+        ReloadRows(
+            saveCurrentState: true,
+            restoreShowAllPhasesFromState: false,
+            forceReloadFromModel: false);
+    }
+
     private void RowsGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_viewModel == null)

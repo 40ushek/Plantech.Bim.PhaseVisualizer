@@ -57,7 +57,13 @@ internal sealed class PhaseVisualizerController
 
     public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        return LoadContext(teklaContext, includeAllPhases: false, PhaseSearchScope.TeklaModel, log);
+        return LoadContext(
+            teklaContext,
+            includeAllPhases: false,
+            searchScope: PhaseSearchScope.TeklaModel,
+            showAllPhases: false,
+            showObjectCountInStatus: true,
+            log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -67,13 +73,21 @@ internal sealed class PhaseVisualizerController
         ILogger? log = null)
     {
         var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
-        return LoadContext(teklaContext, includeAllPhases, searchScope, log);
+        return LoadContext(
+            teklaContext,
+            includeAllPhases,
+            searchScope,
+            showAllPhases: includeAllPhases,
+            showObjectCountInStatus: true,
+            log);
     }
 
     public PhaseVisualizerContext LoadContext(
         SynchronizationContext? teklaContext,
         bool includeAllPhases,
         PhaseSearchScope searchScope,
+        bool showAllPhases,
+        bool showObjectCountInStatus,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
@@ -82,6 +96,8 @@ internal sealed class PhaseVisualizerController
             teklaContext,
             includeAllPhases,
             searchScope,
+            showAllPhases,
+            showObjectCountInStatus,
             log);
     }
 
@@ -93,7 +109,14 @@ internal sealed class PhaseVisualizerController
         ILogger? log = null)
     {
         var searchScope = PhaseSearchScopeMapper.FromUseVisibleViewsFlag(useVisibleViewsForSearch);
-        return LoadContext(modelConfigDirectory, teklaContext, includeAllPhases, searchScope, log);
+        return LoadContext(
+            modelConfigDirectory,
+            teklaContext,
+            includeAllPhases,
+            searchScope,
+            showAllPhases: includeAllPhases,
+            showObjectCountInStatus: true,
+            log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -101,6 +124,8 @@ internal sealed class PhaseVisualizerController
         SynchronizationContext? teklaContext,
         bool includeAllPhases,
         PhaseSearchScope searchScope,
+        bool showAllPhases,
+        bool showObjectCountInStatus,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
@@ -109,6 +134,8 @@ internal sealed class PhaseVisualizerController
             teklaContext,
             includeAllPhases,
             searchScope,
+            showAllPhases,
+            showObjectCountInStatus,
             log);
     }
 
@@ -117,14 +144,27 @@ internal sealed class PhaseVisualizerController
         SynchronizationContext? teklaContext,
         bool includeAllPhases,
         PhaseSearchScope searchScope,
+        bool showAllPhases,
+        bool showObjectCountInStatus,
         ILogger? log = null)
     {
         var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
-        var snapshot = _dataProvider.LoadPhaseSnapshot(teklaContext, config.Columns, includeAllPhases, searchScope, log);
+        var includePhaseObjectCounts = ShouldIncludePhaseObjectCounts(
+            config,
+            includeAllPhases,
+            showAllPhases,
+            showObjectCountInStatus);
+        var snapshot = _dataProvider.LoadPhaseSnapshot(
+            teklaContext,
+            config.Columns,
+            includeAllPhases,
+            searchScope,
+            includePhaseObjectCounts,
+            log);
         var rows = _tableBuilder.BuildRows(snapshot, config, log);
-        var objectCount = snapshot.PhaseObjectCounts.Count > 0
+        var objectCount = includePhaseObjectCounts && snapshot.PhaseObjectCounts.Count > 0
             ? snapshot.PhaseObjectCounts.Values.Sum()
-            : snapshot.Objects.Count;
+            : 0;
 
         return new PhaseVisualizerContext
         {
@@ -138,6 +178,15 @@ internal sealed class PhaseVisualizerController
                 RowCount = rows.Count,
             },
         };
+    }
+
+    private static bool ShouldIncludePhaseObjectCounts(
+        PhaseTableConfig config,
+        bool includeAllPhases,
+        bool showAllPhases,
+        bool showObjectCountInStatus)
+    {
+        return showObjectCountInStatus;
     }
 
     private static ContextPaths ResolveContextPathsFromTekla(SynchronizationContext? teklaContext, ILogger? log = null)

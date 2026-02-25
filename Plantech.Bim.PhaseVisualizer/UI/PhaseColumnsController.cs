@@ -24,6 +24,7 @@ internal sealed class PhaseColumnsController
                 TargetAttribute = c.TargetAttribute ?? string.Empty,
                 BooleanMode = c.BooleanMode ?? string.Empty,
                 ApplyRule = c.ApplyRule,
+                Aggregate = c.Aggregate,
                 Type = c.Type,
                 IsEditable = c.Editable,
             })
@@ -45,18 +46,21 @@ internal sealed class PhaseColumnsController
             {
                 Key = "phase_number",
                 Label = "Phase",
+                Aggregate = PhaseAggregateType.First,
                 Type = PhaseValueType.Integer,
             },
             new()
             {
                 Key = "phase_name",
                 Label = "Name",
+                Aggregate = PhaseAggregateType.First,
                 Type = PhaseValueType.String,
             },
             new()
             {
                 Key = "object_count",
                 Label = "Count",
+                Aggregate = PhaseAggregateType.Count,
                 Type = PhaseValueType.Integer,
             },
         };

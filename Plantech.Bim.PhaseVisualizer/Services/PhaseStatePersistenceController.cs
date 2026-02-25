@@ -23,6 +23,7 @@ internal sealed class PhaseStatePersistenceController
         string? stateFilePath,
         bool showAllPhases,
         bool useVisibleViewsForSearch,
+        bool showObjectCountInStatus,
         IReadOnlyCollection<PhaseTableRowState> rows,
         ILogger log)
     {
@@ -36,6 +37,7 @@ internal sealed class PhaseStatePersistenceController
             persistedState,
             showAllPhases,
             useVisibleViewsForSearch,
+            showObjectCountInStatus,
             (rows ?? Array.Empty<PhaseTableRowState>()).ToList());
 
         _stateController.Save(stateFilePath, snapshot, log);
