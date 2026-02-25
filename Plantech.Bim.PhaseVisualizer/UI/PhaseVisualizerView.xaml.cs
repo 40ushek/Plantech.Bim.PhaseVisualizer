@@ -41,7 +41,6 @@ public partial class PhaseVisualizerView : UserControl
             saveCurrentState: false,
             restoreShowAllPhasesFromState: true,
             forceReloadFromModel: false);
-        UpdateSearchScopeToggleContent(_viewModel.UseVisibleViewsForSearch);
     }
 
     internal void TrySaveState()
@@ -268,7 +267,6 @@ public partial class PhaseVisualizerView : UserControl
         }
 
         var useVisibleViewsForSearch = SearchScopeToggle.IsChecked == true;
-        UpdateSearchScopeToggleContent(useVisibleViewsForSearch);
         _viewModel.UseVisibleViewsForSearch = useVisibleViewsForSearch;
         ReloadRows(
             saveCurrentState: true,
@@ -489,18 +487,10 @@ public partial class PhaseVisualizerView : UserControl
                 restoreShowAllPhasesFromState: restoreShowAllPhasesFromState,
                 forceReloadFromModel: forceReloadFromModel);
             BuildColumns();
-            UpdateSearchScopeToggleContent(_viewModel.UseVisibleViewsForSearch);
         }
         finally
         {
             _isReloadingRows = false;
         }
-    }
-
-    private void UpdateSearchScopeToggleContent(bool useVisibleViewsForSearch)
-    {
-        SearchScopeToggle.Content = useVisibleViewsForSearch
-            ? "Search: Visible Views"
-            : "Search: Tekla Model";
     }
 }

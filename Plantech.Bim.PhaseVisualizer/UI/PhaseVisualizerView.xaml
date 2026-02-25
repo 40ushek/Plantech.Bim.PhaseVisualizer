@@ -7,42 +7,13 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <StackPanel
             Grid.Row="0"
-            Margin="0,0,0,8">
-            <DockPanel Margin="0,0,0,6">
-                <TextBlock
-                    DockPanel.Dock="Left"
-                    VerticalAlignment="Center"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    Text="{Binding StatusText}" />
-                <StackPanel
-                    DockPanel.Dock="Right"
-                    Orientation="Horizontal">
-                    <ToggleButton
-                        x:Name="SearchScopeToggle"
-                        Width="170"
-                        Margin="0,0,8,0"
-                        VerticalAlignment="Center"
-                        Content="Search: Tekla Model"
-                        IsChecked="{Binding UseVisibleViewsForSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        Checked="SearchScopeToggle_Changed"
-                        Unchecked="SearchScopeToggle_Changed" />
-                    <ToggleButton
-                        x:Name="ShowAllPhasesToggle"
-                        Width="150"
-                        VerticalAlignment="Center"
-                        Content="Show All Phases"
-                        IsChecked="{Binding ShowAllPhases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        Checked="ShowAllPhasesToggle_Changed"
-                        Unchecked="ShowAllPhasesToggle_Changed" />
-                </StackPanel>
-            </DockPanel>
-
-            <DockPanel>
+            Margin="0,0,0,4">
+            <DockPanel Margin="0,0,0,3">
                 <TextBlock
                     DockPanel.Dock="Left"
                     Margin="0,0,6,0"
@@ -74,6 +45,59 @@
                     IsEditable="True"
                     ItemsSource="{Binding PresetNames}"
                     Text="{Binding PresetName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+
+            <DockPanel LastChildFill="False">
+                <Grid
+                    DockPanel.Dock="Right"
+                    VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel
+                        Grid.Column="0"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                        <CheckBox
+                            x:Name="ShowAllPhasesToggle"
+                            Margin="0"
+                            VerticalAlignment="Center"
+                            IsChecked="{Binding ShowAllPhases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Checked="ShowAllPhasesToggle_Changed"
+                            Unchecked="ShowAllPhasesToggle_Changed" />
+                        <TextBlock
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="#FF374151"
+                            Text="Show all phases" />
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="2"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        >
+                        <CheckBox
+                            x:Name="SearchScopeToggle"
+                            Margin="0"
+                            VerticalAlignment="Center"
+                            IsChecked="{Binding UseVisibleViewsForSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Checked="SearchScopeToggle_Changed"
+                            Unchecked="SearchScopeToggle_Changed" />
+                        <TextBlock
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            FontWeight="SemiBold"
+                            Foreground="#FF374151"
+                            Text="Search in visible views" />
+                    </StackPanel>
+                </Grid>
             </DockPanel>
         </StackPanel>
 
@@ -112,5 +136,19 @@
                 Click="Close_Click"
                 Content="Close" />
         </StackPanel>
+
+        <Border
+            Grid.Row="3"
+            Margin="0,8,0,0"
+            Padding="8,4"
+            BorderBrush="#FFD0D0D0"
+            BorderThickness="1"
+            CornerRadius="2">
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="12"
+                Text="{Binding StatusText}"
+                TextTrimming="CharacterEllipsis" />
+        </Border>
     </Grid>
 </UserControl>
