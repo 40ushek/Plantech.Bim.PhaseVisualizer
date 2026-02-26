@@ -8,6 +8,7 @@ internal static class PhaseSourceResolver
     private const string PhasePrefix = "phase.";
     private const string PartPrefix = "part.";
     private const string AssemblyPrefix = "assembly.";
+    private const string BoltPrefix = "bolt.";
     private const string UdaPrefix = "ua.";
 
     private static readonly HashSet<string> SupportedPhaseAttributes = new(StringComparer.OrdinalIgnoreCase)
@@ -72,6 +73,19 @@ internal static class PhaseSourceResolver
                 source = $"{AssemblyPrefix}{assemblyAttribute}";
                 return true;
             }
+            case PhaseColumnObjectType.Bolt:
+            {
+                var boltAttribute = attribute?.Trim() ?? string.Empty;
+                if (boltAttribute.Length == 0)
+                {
+                    failureReason = "attribute cannot be empty";
+                    return false;
+                }
+
+                normalizedAttribute = boltAttribute;
+                source = $"{BoltPrefix}{boltAttribute}";
+                return true;
+            }
             default:
                 failureReason = $"unsupported objectType '{objectType}'";
                 return false;
@@ -110,6 +124,10 @@ internal static class PhaseSourceResolver
                 return templateField.Length > 0;
             case PhaseColumnObjectType.Assembly:
                 // The attribute IS the Tekla template field name (e.g. ASSEMBLY.MAINPART.PROFILE).
+                templateField = normalizedAttribute;
+                return templateField.Length > 0;
+            case PhaseColumnObjectType.Bolt:
+                // The attribute IS the Tekla report property name (e.g. BOLT_STANDARD).
                 templateField = normalizedAttribute;
                 return templateField.Length > 0;
             default:

@@ -373,18 +373,28 @@ internal sealed class TeklaPhaseDataProvider
 
         while (objects.MoveNext())
         {
-            if (objects.Current is not Part part)
+            if (objects.Current is Part part)
             {
+                var key = BuildObjectKey(part.Identifier);
+                if (!uniqueObjectKeys.Add(key))
+                {
+                    continue;
+                }
+
+                target.Add(BuildRecord(part, requested, assemblyByKey));
                 continue;
             }
 
-            var key = BuildObjectKey(part.Identifier);
-            if (!uniqueObjectKeys.Add(key))
+            if (requested.BoltAttributes.Count > 0 && objects.Current is BoltGroup boltGroup)
             {
-                continue;
-            }
+                var key = BuildObjectKey(boltGroup.Identifier);
+                if (!uniqueObjectKeys.Add(key))
+                {
+                    continue;
+                }
 
-            target.Add(BuildRecord(part, requested, assemblyByKey));
+                target.Add(BuildBoltRecord(boltGroup, requested));
+            }
         }
     }
 
@@ -431,6 +441,35 @@ internal sealed class TeklaPhaseDataProvider
         return new PhaseObjectRecord
         {
             ObjectId = part.Identifier,
+            PhaseNumber = phaseNumber,
+            PhaseName = phaseName,
+            Attributes = attributes,
+        };
+    }
+
+    private static PhaseObjectRecord BuildBoltRecord(BoltGroup bolt, RequiredSourceSet requested)
+    {
+        bolt.GetPhase(out var phase);
+
+        var phaseNumber = phase?.PhaseNumber ?? 0;
+        var phaseName = phase?.PhaseName ?? string.Empty;
+
+        var attributes = new Dictionary<string, PhaseCellValue>(StringComparer.Ordinal)
+        {
+            ["phase.number"] = PhaseCellValue.FromInteger(phaseNumber),
+            ["phase.name"] = PhaseCellValue.FromString(phaseName),
+        };
+
+        foreach (var boltAttribute in requested.BoltAttributes)
+        {
+            var value = string.Empty;
+            bolt.GetReportProperty(boltAttribute, ref value);
+            attributes[$"bolt.{boltAttribute}"] = PhaseCellValue.FromString(value);
+        }
+
+        return new PhaseObjectRecord
+        {
+            ObjectId = bolt.Identifier,
             PhaseNumber = phaseNumber,
             PhaseName = phaseName,
             Attributes = attributes,
@@ -564,10 +603,12 @@ internal sealed class TeklaPhaseDataProvider
         public bool RequiresAttributeScan { get; private set; }
         public IReadOnlyCollection<string> PartAttributes => _partAttributes;
         public IReadOnlyCollection<string> AssemblyAttributes => _assemblyAttributes;
+        public IReadOnlyCollection<string> BoltAttributes => _boltAttributes;
         public IReadOnlyCollection<string> UdaNames => _udaNames;
 
         private readonly HashSet<string> _partAttributes = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _assemblyAttributes = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _boltAttributes = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _udaNames = new(StringComparer.OrdinalIgnoreCase);
 
         public static RequiredSourceSet FromColumns(IReadOnlyCollection<PhaseColumnConfig>? columns)
@@ -610,6 +651,10 @@ internal sealed class TeklaPhaseDataProvider
                     case PhaseColumnObjectType.Assembly:
                         result.RequiresAttributeScan = true;
                         result._assemblyAttributes.Add(attribute);
+                        continue;
+                    case PhaseColumnObjectType.Bolt:
+                        result.RequiresAttributeScan = true;
+                        result._boltAttributes.Add(attribute);
                         continue;
                     default:
                         continue;
