@@ -105,7 +105,7 @@ public sealed class ApplyRuleBehaviorTests
             TargetAttribute = "exclude_gratings",
             ValueType = PhaseValueType.Boolean,
             Value = "true",
-            TargetObjectType = PhaseColumnObjectType.AssemblyMainPart,
+            TargetObjectType = PhaseColumnObjectType.Assembly,
         };
 
         var mapped = LegacyApplyRuleMapper.TryMap(filter, out var clause);
@@ -113,7 +113,7 @@ public sealed class ApplyRuleBehaviorTests
         Assert.True(mapped);
         Assert.NotNull(clause);
         Assert.True(clause!.UseProfileScope);
-        Assert.Equal(PhaseColumnObjectType.AssemblyMainPart, clause.ProfileScopeObjectType);
+        Assert.Equal(PhaseColumnObjectType.Assembly, clause.ProfileScopeObjectType);
         Assert.Equal(ApplyRuleOperation.NotStartsWith, clause.Operation);
         Assert.Single(clause.LiteralValues);
         Assert.Equal("GIRO", clause.LiteralValues[0]);

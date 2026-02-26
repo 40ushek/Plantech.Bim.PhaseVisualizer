@@ -35,7 +35,5 @@ internal enum PhaseColumnObjectType
     Phase,
     Part,
     Assembly,
-    AssemblyMainPart = Assembly, // backward-compat alias; use Assembly in new configs
     Bolt,
 }
-
