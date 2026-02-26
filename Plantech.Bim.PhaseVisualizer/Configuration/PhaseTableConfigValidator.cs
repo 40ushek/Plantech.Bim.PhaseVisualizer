@@ -193,10 +193,11 @@ internal sealed class PhaseTableConfigValidator
                     }
 
                     if (raw.TargetObjectType != PhaseColumnObjectType.Part
-                        && raw.TargetObjectType != PhaseColumnObjectType.Assembly)
+                        && raw.TargetObjectType != PhaseColumnObjectType.Assembly
+                        && raw.TargetObjectType != PhaseColumnObjectType.Bolt)
                     {
                         log?.Warning(
-                            "PhaseVisualizer config skipped editable column {Key}: targetObjectType must be Part or Assembly.",
+                            "PhaseVisualizer config skipped editable column {Key}: targetObjectType must be Part, Assembly or Bolt.",
                             key);
                         return false;
                     }
