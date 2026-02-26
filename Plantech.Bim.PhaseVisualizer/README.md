@@ -44,6 +44,45 @@ Use explicit `objectType + attribute`:
 }
 ```
 
+Supported `objectType` / `targetObjectType` values:
+
+| Value | Tekla type | Attribute source |
+|---|---|---|
+| `Phase` | `Phase` | `number`, `name` |
+| `Part` | `Part` | `profile`, `material`, `class`, `name`, `finish`, `ua.<name>` |
+| `Assembly` | `Assembly` | any Tekla report property (for example `ASSEMBLY.MAINPART.PROFILE`) |
+| `Bolt` | `BoltGroup` | any Tekla report property (for example `BOLT_STANDARD`) |
+
+Example model column for assembly:
+
+```json
+{
+  "key": "assembly_main_profile",
+  "label": "Assembly Main Profile",
+  "type": "String",
+  "objectType": "Assembly",
+  "attribute": "ASSEMBLY.MAINPART.PROFILE",
+  "aggregate": "First",
+  "visibleByDefault": false,
+  "order": 40
+}
+```
+
+Example model column for bolt:
+
+```json
+{
+  "key": "bolt_standard",
+  "label": "Bolt Standard",
+  "type": "String",
+  "objectType": "Bolt",
+  "attribute": "BOLT_STANDARD",
+  "aggregate": "Distinct",
+  "visibleByDefault": false,
+  "order": 50
+}
+```
+
 ### Editable filter column (user input)
 
 Use `editable: true` and target mapping:
@@ -125,14 +164,17 @@ Notes:
 - All editable columns with `targetObjectType + targetAttribute` and non-empty values are included in generated Tekla filter.
 - Rule priority for editable columns:
 1. `applyRule`
-2. legacy alias mapping (`booleanMode: "positiveNumber"`, `exclude_existing`)
-3. legacy special branch (`exclude_gratings`)
-4. generic fallback (`equals` / `in`) for model-targeted editable fields
+2. legacy alias mapping (`booleanMode: "positiveNumber"`, `exclude_existing`, `exclude_gratings`)
+3. generic fallback (`equals` / `in`) for model-targeted editable fields
 - `applyRule` is fail-safe: invalid branch is skipped with warning, app does not crash.
 - Built-in flags (`exclude_gratings`, `exclude_existing`) are handled as criteria flags via `targetAttribute`.
 - `exclude_gratings` and `exclude_existing` are legacy macro-era flags; prefer explicit editable model-targeted columns for new configs.
 - `Apply` requires an active view or at least one visible view in Tekla.
 - `Count` is calculated at model level per phase, so it can be greater than objects currently visible in a specific view.
+
+Notes:
+- There is no `AssemblyMainPart` object type in schema anymore; use `Assembly`.
+- Model columns for `Part` are intentionally strict (`profile/material/class/name/finish` and `ua.<name>`). `Assembly` and `Bolt` use pass-through report property names.
 
 ## Apply Troubleshooting
 

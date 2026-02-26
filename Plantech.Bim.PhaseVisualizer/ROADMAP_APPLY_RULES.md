@@ -1,6 +1,6 @@
 # ROADMAP: Apply Rules (Config-Driven Conditions)
 
-## Current State (2026-02-23)
+## Current State (2026-02-26)
 
 Implemented:
 - `applyRule` config model is added to editable columns and flows end-to-end:
@@ -17,12 +17,8 @@ Implemented:
 - `PhaseTableConfigValidator` validates and normalizes `applyRule` with warning-only diagnostics.
 - `PhaseFilterExpressionBuilder` executes rule clauses with priority:
 1. `applyRule`
-2. legacy alias mapping (`booleanMode`, `exclude_existing`)
-3. legacy special-case (`exclude_gratings`)
-4. generic fallback
-
-Known current limit:
-- `exclude_gratings` still uses dedicated legacy profile-scope branch and is not yet fully declarative in `LegacyApplyRuleMapper`.
+2. legacy alias mapping (`booleanMode`, `exclude_existing`, `exclude_gratings`)
+3. generic fallback
 
 ## Objective
 
@@ -37,7 +33,7 @@ Target outcome:
 
 Current state is mixed:
 - Generic editable columns work.
-- Legacy macro flags (`exclude_existing`, `exclude_gratings`) still use hardcoded logic.
+- Legacy macro flags (`exclude_existing`, `exclude_gratings`) still require compatibility mapping logic.
 - `booleanMode` was introduced as a tactical improvement for numeric-backed booleans.
 
 This solves immediate needs, but not long-term maintainability.  
@@ -192,7 +188,7 @@ Deliverables:
 - Preserve current OR/AND composition semantics.
 
 ### M11.4 - Legacy Mapping Layer
-Status: PARTIAL
+Status: DONE
 
 Deliverables:
 - Map legacy `booleanMode` and macro flags to internal rule path.

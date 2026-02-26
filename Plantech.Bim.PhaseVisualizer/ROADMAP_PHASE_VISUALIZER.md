@@ -56,8 +56,6 @@ Supported `objectType` / `targetObjectType` values:
 | `Assembly` | `Assembly` | any Tekla report property (e.g. `ASSEMBLY.MAINPART.PROFILE`) — passed through |
 | `Bolt` | `BoltGroup` | any Tekla report property (e.g. `BOLT_STANDARD`) — passed through |
 
-`AssemblyMainPart` is a backward-compat alias for `Assembly`; use `Assembly` in new configs.
-
 ## Milestone Status
 
 ### M1 - Expression Builder Extraction
