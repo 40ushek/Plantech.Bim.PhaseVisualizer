@@ -245,12 +245,9 @@ internal sealed class PhaseFilterExpressionBuilder
     {
         templateField = string.Empty;
 
-        // Do not lowercase here: Part has its own NormalizeSimpleAttribute inside PhaseSourceResolver;
-        // Assembly and Bolt pass the attribute through directly and must preserve original casing.
-        var normalizedTargetAttribute = targetAttribute.Trim();
         if (PhaseSourceResolver.TryGetTemplateStringField(
                 targetObjectType,
-                normalizedTargetAttribute,
+                targetAttribute.Trim(),
                 out templateField))
         {
             return true;
