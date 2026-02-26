@@ -1,6 +1,6 @@
 # ROADMAP: Phase Visualizer
 
-## Current State (2026-02-23)
+## Current State (2026-02-26)
 
 Implemented:
 - Dynamic WPF phase table from JSON config.
@@ -27,6 +27,8 @@ Implemented:
 - Config-driven `applyRule` conditions introduced for editable columns (with legacy compatibility mapping).
   Detailed rollout/status is tracked in `ROADMAP_APPLY_RULES.md`.
 - Namespace simplified to `Plantech.Bim.PhaseVisualizer.*`.
+- `Bolt` object type supported: display columns (`objectType: Bolt`) and editable filter columns (`targetObjectType: Bolt`).
+  `BoltGroup` objects collected alongside `Part` in the attribute scan; report properties read via `GetReportProperty`.
 
 ## Architecture (Locked)
 
@@ -44,6 +46,17 @@ Current editable schema:
 - `editable: true`
 - For model-targeted filters: `targetObjectType + targetAttribute`
 - For built-in criteria flags: `targetAttribute` only (for example `exclude_gratings`, `exclude_existing`).
+
+Supported `objectType` / `targetObjectType` values:
+
+| Value | Tekla type | Attribute source |
+|---|---|---|
+| `Phase` | `Phase` | `number`, `name` — fixed set |
+| `Part` | `Part` | `profile`, `material`, `class`, `name`, `finish`, `ua.<name>` |
+| `Assembly` | `Assembly` | any Tekla report property (e.g. `ASSEMBLY.MAINPART.PROFILE`) — passed through |
+| `Bolt` | `BoltGroup` | any Tekla report property (e.g. `BOLT_STANDARD`) — passed through |
+
+`AssemblyMainPart` is a backward-compat alias for `Assembly`; use `Assembly` in new configs.
 
 ## Milestone Status
 
@@ -110,6 +123,16 @@ Done:
 - Status/UI load formatting now receives explicit scope enum, not boolean flag.
 - Phase counts remain model-wide (`GetObjectsByFilter(...).GetSize()`), independent of view scope.
 - Visualization/apply remains view-level (active/visible view), separated from data query scope.
+
+### M16 - Bolt Object Type
+Status: DONE
+
+Done:
+- `PhaseColumnObjectType.Bolt` added to enum.
+- `PhaseSourceResolver`: `Bolt` case in `TryBuildModelSource` (source = `bolt.<attr>`) and `TryGetTemplateStringField` (attribute passes through, preserving casing — same pattern as `Assembly`).
+- `TeklaPhaseDataProvider`: `RequiredSourceSet.BoltAttributes`; `BoltGroup` objects collected alongside `Part` in the attribute scan loop; `BuildBoltRecord` reads phase + `GetReportProperty` per requested attribute.
+- `PhaseTableConfigValidator`: `Bolt` allowed as `targetObjectType` for editable filter columns (alongside `Part` and `Assembly`).
+- Bug fix: `TryResolveTemplateStringField` was lowercasing `targetAttribute` before passing to `PhaseSourceResolver`, breaking Assembly and Bolt template field names. Removed the unnecessary `ToLowerInvariant()`; normalization is handled inside `PhaseSourceResolver` per object type.
 
 ### M15 - ApplyRule Config-Driven Conditions
 Status: DONE
