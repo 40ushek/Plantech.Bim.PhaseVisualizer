@@ -34,6 +34,7 @@ internal enum PhaseColumnObjectType
 {
     Phase,
     Part,
-    AssemblyMainPart,
+    Assembly,
+    AssemblyMainPart = Assembly, // backward-compat alias; use Assembly in new configs
 }
 

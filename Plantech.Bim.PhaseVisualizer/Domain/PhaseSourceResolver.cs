@@ -7,8 +7,7 @@ internal static class PhaseSourceResolver
 {
     private const string PhasePrefix = "phase.";
     private const string PartPrefix = "part.";
-    private const string PartUdaPrefix = "part.ua.";
-    private const string AssemblyMainPartPrefix = "assembly.mainpart.";
+    private const string AssemblyPrefix = "assembly.";
     private const string UdaPrefix = "ua.";
 
     private static readonly HashSet<string> SupportedPhaseAttributes = new(StringComparer.OrdinalIgnoreCase)
@@ -60,14 +59,19 @@ internal static class PhaseSourceResolver
                     out normalizedAttribute,
                     out source,
                     out failureReason);
-            case PhaseColumnObjectType.AssemblyMainPart:
-                return TryBuildPartLikeSource(
-                    AssemblyMainPartPrefix,
-                    attribute,
-                    allowUda: false,
-                    out normalizedAttribute,
-                    out source,
-                    out failureReason);
+            case PhaseColumnObjectType.Assembly:
+            {
+                var assemblyAttribute = attribute?.Trim() ?? string.Empty;
+                if (assemblyAttribute.Length == 0)
+                {
+                    failureReason = "attribute cannot be empty";
+                    return false;
+                }
+
+                normalizedAttribute = assemblyAttribute;
+                source = $"{AssemblyPrefix}{assemblyAttribute}";
+                return true;
+            }
             default:
                 failureReason = $"unsupported objectType '{objectType}'";
                 return false;
@@ -104,16 +108,9 @@ internal static class PhaseSourceResolver
                     _ => string.Empty,
                 };
                 return templateField.Length > 0;
-            case PhaseColumnObjectType.AssemblyMainPart:
-                templateField = normalizedAttribute switch
-                {
-                    "profile" => "ASSEMBLY.MAINPART.PROFILE",
-                    "material" => "ASSEMBLY.MAINPART.MATERIAL",
-                    "class" => "ASSEMBLY.MAINPART.CLASS",
-                    "name" => "ASSEMBLY.MAINPART.NAME",
-                    "finish" => "ASSEMBLY.MAINPART.FINISH",
-                    _ => string.Empty,
-                };
+            case PhaseColumnObjectType.Assembly:
+                // The attribute IS the Tekla template field name (e.g. ASSEMBLY.MAINPART.PROFILE).
+                templateField = normalizedAttribute;
                 return templateField.Length > 0;
             default:
                 return false;

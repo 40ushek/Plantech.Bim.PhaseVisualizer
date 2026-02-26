@@ -255,7 +255,7 @@ internal sealed class PhaseTableBuilder
             return directValue;
         }
 
-        if (objectType == PhaseColumnObjectType.AssemblyMainPart)
+        if (objectType == PhaseColumnObjectType.Assembly)
         {
             var fallbackPartSource = $"part.{normalizedAttribute}";
             if (TryGetAttributeValue(record.Attributes, fallbackPartSource, out var fallbackPartValue))

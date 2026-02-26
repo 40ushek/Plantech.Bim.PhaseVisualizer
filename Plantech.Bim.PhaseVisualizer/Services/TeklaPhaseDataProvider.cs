@@ -232,13 +232,13 @@ internal sealed class TeklaPhaseDataProvider
 
         var result = new List<PhaseObjectRecord>();
         var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
-        var assemblyMainPartDataByAssembly = new Dictionary<string, AssemblyMainPartData?>(StringComparer.Ordinal);
+        var assemblyByKey = new Dictionary<string, Assembly?>(StringComparer.Ordinal);
         var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
         ModelObjectEnumerator.AutoFetch = true;
         try
         {
             var allObjects = selector.GetAllObjects();
-            AppendPartRecords(allObjects, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+            AppendPartRecords(allObjects, result, uniqueObjectKeys, requested, assemblyByKey);
 
             log?.Information(
                 "PhaseVisualizer Tekla model part snapshot collected. Parts={PartCount}",
@@ -262,7 +262,7 @@ internal sealed class TeklaPhaseDataProvider
 
         var result = new List<PhaseObjectRecord>();
         var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
-        var assemblyMainPartDataByAssembly = new Dictionary<string, AssemblyMainPartData?>(StringComparer.Ordinal);
+        var assemblyByKey = new Dictionary<string, Assembly?>(StringComparer.Ordinal);
         var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
         ModelObjectEnumerator.AutoFetch = true;
         try
@@ -282,7 +282,7 @@ internal sealed class TeklaPhaseDataProvider
                     var objectsInView = selector.GetObjectsByBoundingBox(
                         view.WorkArea.MinPoint,
                         view.WorkArea.MaxPoint);
-                    AppendPartRecords(objectsInView, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+                    AppendPartRecords(objectsInView, result, uniqueObjectKeys, requested, assemblyByKey);
                 }
             }
 
@@ -294,7 +294,7 @@ internal sealed class TeklaPhaseDataProvider
                     var objectsInActiveView = selector.GetObjectsByBoundingBox(
                         activeView.WorkArea.MinPoint,
                         activeView.WorkArea.MaxPoint);
-                    AppendPartRecords(objectsInActiveView, result, uniqueObjectKeys, requested, assemblyMainPartDataByAssembly);
+                    AppendPartRecords(objectsInActiveView, result, uniqueObjectKeys, requested, assemblyByKey);
                     viewCount = 1;
                 }
             }
@@ -353,7 +353,7 @@ internal sealed class TeklaPhaseDataProvider
         ICollection<PhaseObjectRecord> target,
         ISet<string> uniqueObjectKeys,
         RequiredSourceSet requested,
-        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+        IDictionary<string, Assembly?> assemblyByKey)
     {
         if (objects == null)
         {
@@ -384,14 +384,14 @@ internal sealed class TeklaPhaseDataProvider
                 continue;
             }
 
-            target.Add(BuildRecord(part, requested, assemblyMainPartDataByAssembly));
+            target.Add(BuildRecord(part, requested, assemblyByKey));
         }
     }
 
     private static PhaseObjectRecord BuildRecord(
         Part part,
         RequiredSourceSet requested,
-        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+        IDictionary<string, Assembly?> assemblyByKey)
     {
         part.GetPhase(out var phase);
 
@@ -412,13 +412,18 @@ internal sealed class TeklaPhaseDataProvider
             }
         }
 
-        var assemblyMainPartData = requested.AssemblyMainPartAttributes.Count > 0
-            ? ResolveAssemblyMainPartData(part, assemblyMainPartDataByAssembly)
-            : null;
-        foreach (var assemblyMainPartAttribute in requested.AssemblyMainPartAttributes)
+        if (requested.AssemblyAttributes.Count > 0)
         {
-            attributes[$"assembly.mainpart.{assemblyMainPartAttribute}"] = PhaseCellValue.FromString(
-                ResolveAssemblyMainPartAttributeValue(assemblyMainPartData, assemblyMainPartAttribute));
+            var assembly = GetAssemblyCached(part, assemblyByKey);
+            if (assembly != null)
+            {
+                foreach (var assemblyAttribute in requested.AssemblyAttributes)
+                {
+                    var value = string.Empty;
+                    assembly.GetReportProperty(assemblyAttribute, ref value);
+                    attributes[$"assembly.{assemblyAttribute}"] = PhaseCellValue.FromString(value);
+                }
+            }
         }
 
         AppendUserAttributes(part, attributes, requested.UdaNames);
@@ -460,78 +465,34 @@ internal sealed class TeklaPhaseDataProvider
         }
     }
 
-    private static string? ResolveAssemblyMainPartAttributeValue(
-        AssemblyMainPartData? data,
-        string attribute)
-    {
-        if (data == null)
-        {
-            return null;
-        }
-
-        return attribute switch
-        {
-            "profile" => data.Profile,
-            "material" => data.Material,
-            "class" => data.Class,
-            "name" => data.Name,
-            "finish" => data.Finish,
-            _ => null,
-        };
-    }
-
-    private static AssemblyMainPartData? ResolveAssemblyMainPartData(
-        Part part,
-        IDictionary<string, AssemblyMainPartData?> assemblyMainPartDataByAssembly)
+    private static Assembly? GetAssemblyCached(Part part, IDictionary<string, Assembly?> assemblyByKey)
     {
         if (part == null)
         {
             return null;
         }
 
-        Assembly? assembly = null;
         try
         {
-            assembly = part.GetAssembly();
-        }
-        catch
-        {
-            return null;
-        }
-
-        if (assembly == null)
-        {
-            return null;
-        }
-
-        var assemblyKey = BuildObjectKey(assembly.Identifier);
-        if (assemblyMainPartDataByAssembly.TryGetValue(assemblyKey, out var cachedData))
-        {
-            return cachedData;
-        }
-
-        AssemblyMainPartData? resolvedData = null;
-        try
-        {
-            if (assembly.GetMainPart() is Part mainPart)
+            var assembly = part.GetAssembly();
+            if (assembly == null)
             {
-                resolvedData = new AssemblyMainPartData
-                {
-                    Profile = mainPart.Profile?.ProfileString,
-                    Material = mainPart.Material?.MaterialString,
-                    Class = mainPart.Class,
-                    Name = mainPart.Name,
-                    Finish = mainPart.Finish,
-                };
+                return null;
             }
+
+            var key = BuildObjectKey(assembly.Identifier);
+            if (!assemblyByKey.TryGetValue(key, out var cached))
+            {
+                assemblyByKey[key] = assembly;
+                cached = assembly;
+            }
+
+            return cached;
         }
         catch
         {
-            resolvedData = null;
+            return null;
         }
-
-        assemblyMainPartDataByAssembly[assemblyKey] = resolvedData;
-        return resolvedData;
     }
 
     private static void AppendUserAttributes(
@@ -598,24 +559,15 @@ internal sealed class TeklaPhaseDataProvider
 
 
 
-    private sealed class AssemblyMainPartData
-    {
-        public string? Profile { get; set; }
-        public string? Material { get; set; }
-        public string? Class { get; set; }
-        public string? Name { get; set; }
-        public string? Finish { get; set; }
-    }
-
     private sealed class RequiredSourceSet
     {
         public bool RequiresAttributeScan { get; private set; }
         public IReadOnlyCollection<string> PartAttributes => _partAttributes;
-        public IReadOnlyCollection<string> AssemblyMainPartAttributes => _assemblyMainPartAttributes;
+        public IReadOnlyCollection<string> AssemblyAttributes => _assemblyAttributes;
         public IReadOnlyCollection<string> UdaNames => _udaNames;
 
         private readonly HashSet<string> _partAttributes = new(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _assemblyMainPartAttributes = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _assemblyAttributes = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _udaNames = new(StringComparer.OrdinalIgnoreCase);
 
         public static RequiredSourceSet FromColumns(IReadOnlyCollection<PhaseColumnConfig>? columns)
@@ -655,9 +607,9 @@ internal sealed class TeklaPhaseDataProvider
 
                         result._partAttributes.Add(attribute);
                         continue;
-                    case PhaseColumnObjectType.AssemblyMainPart:
+                    case PhaseColumnObjectType.Assembly:
                         result.RequiresAttributeScan = true;
-                        result._assemblyMainPartAttributes.Add(attribute);
+                        result._assemblyAttributes.Add(attribute);
                         continue;
                     default:
                         continue;

@@ -537,17 +537,17 @@ internal sealed class PhaseFilterExpressionBuilder
     private static IReadOnlyList<StringFilterExpression> GetProfileExpressions(PhaseColumnObjectType? targetObjectType)
     {
         var partExpression = CreateProfileExpression(PhaseColumnObjectType.Part);
-        var assemblyMainPartExpression = CreateProfileExpression(PhaseColumnObjectType.AssemblyMainPart);
+        var assemblyExpression = CreateProfileExpression(PhaseColumnObjectType.Assembly);
 
         return targetObjectType switch
         {
             PhaseColumnObjectType.Part => partExpression == null
                 ? Array.Empty<StringFilterExpression>()
                 : new[] { partExpression },
-            PhaseColumnObjectType.AssemblyMainPart => assemblyMainPartExpression == null
+            PhaseColumnObjectType.Assembly => assemblyExpression == null
                 ? Array.Empty<StringFilterExpression>()
-                : new[] { assemblyMainPartExpression },
-            _ => new StringFilterExpression?[] { partExpression, assemblyMainPartExpression }
+                : new[] { assemblyExpression },
+            _ => new StringFilterExpression?[] { partExpression, assemblyExpression }
                 .Where(x => x != null)
                 .Select(x => x!)
                 .ToArray(),
@@ -556,7 +556,11 @@ internal sealed class PhaseFilterExpressionBuilder
 
     private static StringFilterExpression? CreateProfileExpression(PhaseColumnObjectType objectType)
     {
-        if (!PhaseSourceResolver.TryGetTemplateStringField(objectType, "profile", out var templateField))
+        var attribute = objectType == PhaseColumnObjectType.Assembly
+            ? "ASSEMBLY.MAINPART.PROFILE"
+            : "profile";
+
+        if (!PhaseSourceResolver.TryGetTemplateStringField(objectType, attribute, out var templateField))
         {
             return null;
         }
