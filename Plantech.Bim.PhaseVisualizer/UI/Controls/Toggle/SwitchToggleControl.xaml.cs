@@ -42,6 +42,12 @@ public partial class SwitchToggleControl : UserControl
         typeof(SwitchToggleControl),
         new PropertyMetadata(true, OnVisualPropertyChanged));
 
+    public static readonly DependencyProperty ShowLabelProperty = DependencyProperty.Register(
+        nameof(ShowLabel),
+        typeof(bool),
+        typeof(SwitchToggleControl),
+        new PropertyMetadata(true, OnVisualPropertyChanged));
+
     public event RoutedEventHandler? Toggled;
 
     public SwitchToggleControl()
@@ -80,6 +86,12 @@ public partial class SwitchToggleControl : UserControl
         set => SetValue(ShowStateTextProperty, value);
     }
 
+    public bool ShowLabel
+    {
+        get => (bool)GetValue(ShowLabelProperty);
+        set => SetValue(ShowLabelProperty, value);
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         UpdateStateText();
@@ -98,6 +110,21 @@ public partial class SwitchToggleControl : UserControl
 
     private void UpdateStateText()
     {
+        if (ShowLabel)
+        {
+            if (LabelTextBlock != null)
+            {
+                LabelTextBlock.Visibility = Visibility.Visible;
+            }
+        }
+        else
+        {
+            if (LabelTextBlock != null)
+            {
+                LabelTextBlock.Visibility = Visibility.Collapsed;
+            }
+        }
+
         if (StateTextBlock == null)
         {
             return;

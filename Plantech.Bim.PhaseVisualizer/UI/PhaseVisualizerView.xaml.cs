@@ -1,4 +1,5 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
+using Plantech.Bim.PhaseVisualizer.UI.Controls.Toggle;
 using System;
 using System.ComponentModel;
 using System.Windows;
@@ -105,13 +106,18 @@ public partial class PhaseVisualizerView : UserControl
         {
             if (column.Type == PhaseValueType.Boolean)
             {
+                var useSwitchToggle = IsSwitchTogglePilotColumn(column.Key);
                 RowsGrid.Columns.Add(new DataGridTemplateColumn
                 {
                     Header = column.Label,
                     IsReadOnly = !column.IsEditable,
                     CellStyle = centeredTemplateCellStyle,
-                    CellTemplate = CreateCenteredCheckBoxTemplate($"[{column.Key}]", !column.IsEditable),
-                    CellEditingTemplate = CreateCenteredCheckBoxTemplate($"[{column.Key}]", !column.IsEditable),
+                    CellTemplate = useSwitchToggle
+                        ? CreateCenteredSwitchToggleTemplate($"[{column.Key}]", !column.IsEditable)
+                        : CreateCenteredCheckBoxTemplate($"[{column.Key}]", !column.IsEditable),
+                    CellEditingTemplate = useSwitchToggle
+                        ? CreateCenteredSwitchToggleTemplate($"[{column.Key}]", !column.IsEditable)
+                        : CreateCenteredCheckBoxTemplate($"[{column.Key}]", !column.IsEditable),
                     Width = 110,
                     SortMemberPath = column.Key,
                 });
@@ -170,6 +176,42 @@ public partial class PhaseVisualizerView : UserControl
         {
             VisualTree = root,
         };
+    }
+
+    private static DataTemplate CreateCenteredSwitchToggleTemplate(string bindingPath, bool isReadOnly)
+    {
+        var root = new FrameworkElementFactory(typeof(Grid));
+        root.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+        root.SetValue(VerticalAlignmentProperty, VerticalAlignment.Stretch);
+        root.SetValue(MarginProperty, new Thickness(0));
+
+        var toggle = new FrameworkElementFactory(typeof(SwitchToggleControl));
+        toggle.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        toggle.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+        toggle.SetValue(MarginProperty, new Thickness(0));
+        toggle.SetValue(WidthProperty, 34d);
+        toggle.SetValue(SwitchToggleControl.ShowLabelProperty, false);
+        toggle.SetValue(SwitchToggleControl.ShowStateTextProperty, false);
+        toggle.SetValue(IsEnabledProperty, !isReadOnly);
+        toggle.SetBinding(
+            SwitchToggleControl.IsCheckedProperty,
+            new Binding(bindingPath)
+            {
+                Mode = isReadOnly ? BindingMode.OneWay : BindingMode.TwoWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged,
+            });
+
+        root.AppendChild(toggle);
+
+        return new DataTemplate
+        {
+            VisualTree = root,
+        };
+    }
+
+    private static bool IsSwitchTogglePilotColumn(string? columnKey)
+    {
+        return string.Equals(columnKey, "exclude_gratings", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Style CreateCenteredTemplateCellStyle()

@@ -62,6 +62,7 @@
             Unchecked="OnSwitchToggled" />
 
         <TextBlock
+            x:Name="LabelTextBlock"
             Grid.Column="1"
             Margin="6,0,0,0"
             VerticalAlignment="Center"
