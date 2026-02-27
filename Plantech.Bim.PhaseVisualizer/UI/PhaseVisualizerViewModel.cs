@@ -34,6 +34,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private readonly PhaseTableStateUiController _tableStateUiController;
     private readonly DataTable _table = new("PhaseVisualizer");
     private List<PhaseColumnPresentation> _columns = new();
+    private PhaseTableLayoutState? _tableLayoutState;
     private readonly Dictionary<int, PhaseTableRowState> _cachedRowStatesByPhase = new();
     private string _stateFilePath = string.Empty;
     private bool _isRestoringShowAllPhases;
@@ -268,6 +269,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         PhaseSearchScope searchScope)
     {
         ApplyPresetNamesState(persistedState);
+        _tableLayoutState = PhaseTableLayoutStateCloner.Clone(persistedState?.Layout);
 
         var result = _loadedContextController.Apply(
             _table,
@@ -392,8 +394,19 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             UseVisibleViewsForSearch,
             ShowObjectCountInStatus,
             _cachedRowStatesByPhase.Values.ToList(),
+            _tableLayoutState,
             _log);
         ApplyPresetNamesState(state);
+    }
+
+    public void SetTableLayoutState(PhaseTableLayoutState? layoutState)
+    {
+        _tableLayoutState = PhaseTableLayoutStateCloner.Clone(layoutState);
+    }
+
+    public PhaseTableLayoutState? GetTableLayoutState()
+    {
+        return PhaseTableLayoutStateCloner.Clone(_tableLayoutState);
     }
 
     public bool TrySortRows(string columnKey, ListSortDirection direction)

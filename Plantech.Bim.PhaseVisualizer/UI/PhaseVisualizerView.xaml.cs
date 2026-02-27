@@ -1,6 +1,7 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
 using Plantech.Bim.PhaseVisualizer.UI.Controls.Toggle;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +14,8 @@ namespace Plantech.Bim.PhaseVisualizer.UI;
 
 public partial class PhaseVisualizerView : UserControl
 {
+    private const string SpacerColumnKey = "__spacer";
+
     private PhaseVisualizerViewModel? _viewModel;
     private CheckBox? _selectAllCheckBox;
     private bool _isUpdatingSelectAllCheckBox;
@@ -55,6 +58,7 @@ public partial class PhaseVisualizerView : UserControl
         {
             RowsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
             RowsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            _viewModel.SetTableLayoutState(CaptureTableLayoutState());
             _viewModel.SaveState();
         }
         catch
@@ -143,8 +147,167 @@ public partial class PhaseVisualizerView : UserControl
             }
         }
 
+        // Trailing spacer makes right-side resizing of real columns easier.
+        RowsGrid.Columns.Add(new DataGridTemplateColumn
+        {
+            Header = string.Empty,
+            IsReadOnly = true,
+            CanUserSort = false,
+            CanUserReorder = false,
+            CanUserResize = false,
+            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+            MinWidth = 28,
+            SortMemberPath = SpacerColumnKey,
+            CellTemplate = CreateEmptyCellTemplate(),
+            CellEditingTemplate = CreateEmptyCellTemplate(),
+        });
+
         RowsGrid.ItemsSource = _viewModel.RowsView;
+        ApplySavedTableLayout();
         UpdateSelectAllCheckBoxState();
+    }
+
+    private PhaseTableLayoutState CaptureTableLayoutState()
+    {
+        var layout = new PhaseTableLayoutState();
+        foreach (var column in RowsGrid.Columns)
+        {
+            var key = column.SortMemberPath?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(key)
+                || string.Equals(key, SpacerColumnKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var width = column.ActualWidth;
+            if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d)
+            {
+                width = column.Width.DisplayValue;
+            }
+
+            if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d)
+            {
+                width = 80d;
+            }
+
+            layout.Columns.Add(new PhaseTableColumnLayoutState
+            {
+                Key = key,
+                DisplayIndex = column.DisplayIndex,
+                Width = width,
+            });
+
+            if (column.SortDirection.HasValue)
+            {
+                layout.Sort = new PhaseTableSortLayoutState
+                {
+                    ColumnKey = key,
+                    Descending = column.SortDirection.Value == ListSortDirection.Descending,
+                };
+            }
+        }
+
+        return layout;
+    }
+
+    private void ApplySavedTableLayout()
+    {
+        if (_viewModel == null || RowsGrid.Columns.Count == 0)
+        {
+            return;
+        }
+
+        var layout = _viewModel.GetTableLayoutState();
+        if (layout == null)
+        {
+            return;
+        }
+
+        var columnsByKey = new Dictionary<string, DataGridColumn>(StringComparer.OrdinalIgnoreCase);
+        foreach (var column in RowsGrid.Columns)
+        {
+            var key = column.SortMemberPath?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                columnsByKey[key] = column;
+            }
+        }
+
+        foreach (var savedColumn in layout.Columns ?? new List<PhaseTableColumnLayoutState>())
+        {
+            if (savedColumn == null
+                || string.IsNullOrWhiteSpace(savedColumn.Key)
+                || !columnsByKey.TryGetValue(savedColumn.Key, out var targetColumn))
+            {
+                continue;
+            }
+
+            if (savedColumn.Width > 0d
+                && !double.IsNaN(savedColumn.Width)
+                && !double.IsInfinity(savedColumn.Width))
+            {
+                targetColumn.Width = new DataGridLength(savedColumn.Width, DataGridLengthUnitType.Pixel);
+            }
+        }
+
+        foreach (var savedColumn in layout.Columns ?? new List<PhaseTableColumnLayoutState>())
+        {
+            if (savedColumn == null
+                || string.IsNullOrWhiteSpace(savedColumn.Key)
+                || !columnsByKey.TryGetValue(savedColumn.Key, out var targetColumn))
+            {
+                continue;
+            }
+
+            var maxIndex = Math.Max(0, RowsGrid.Columns.Count - 1);
+            var targetIndex = savedColumn.DisplayIndex;
+            if (targetIndex < 0)
+            {
+                targetIndex = 0;
+            }
+            else if (targetIndex > maxIndex)
+            {
+                targetIndex = maxIndex;
+            }
+
+            try
+            {
+                targetColumn.DisplayIndex = targetIndex;
+            }
+            catch
+            {
+                // Keep layout restore best-effort.
+            }
+        }
+
+        if (columnsByKey.TryGetValue(SpacerColumnKey, out var spacerColumn))
+        {
+            spacerColumn.DisplayIndex = RowsGrid.Columns.Count - 1;
+        }
+
+        var sort = layout.Sort;
+        if (sort == null
+            || string.IsNullOrWhiteSpace(sort.ColumnKey)
+            || !columnsByKey.TryGetValue(sort.ColumnKey, out var sortColumn)
+            || sortColumn.DisplayIndex == 0)
+        {
+            return;
+        }
+
+        var direction = sort.Descending
+            ? ListSortDirection.Descending
+            : ListSortDirection.Ascending;
+
+        foreach (var column in RowsGrid.Columns)
+        {
+            if (!ReferenceEquals(column, sortColumn))
+            {
+                column.SortDirection = null;
+            }
+        }
+
+        sortColumn.SortDirection = direction;
+        _viewModel.TrySortRows(sort.ColumnKey, direction);
     }
 
     private static DataTemplate CreateCenteredCheckBoxTemplate(string bindingPath, bool isReadOnly)
@@ -175,6 +338,18 @@ public partial class PhaseVisualizerView : UserControl
         return new DataTemplate
         {
             VisualTree = root,
+        };
+    }
+
+    private static DataTemplate CreateEmptyCellTemplate()
+    {
+        var border = new FrameworkElementFactory(typeof(Border));
+        border.SetValue(Border.PaddingProperty, new Thickness(0));
+        border.SetValue(IsHitTestVisibleProperty, false);
+
+        return new DataTemplate
+        {
+            VisualTree = border,
         };
     }
 
@@ -333,6 +508,27 @@ public partial class PhaseVisualizerView : UserControl
         }
 
         var source = e.OriginalSource as DependencyObject;
+        if (source == null)
+        {
+            return;
+        }
+
+        // Clicking empty table area should clear UI selection instead of selecting a nearby row.
+        var rowUnderMouse = FindParent<DataGridRow>(source);
+        if (rowUnderMouse == null
+            && FindParent<DataGridColumnHeader>(source) == null
+            && FindParent<ScrollBar>(source) == null)
+        {
+            if (RowsGrid.SelectedItems.Count > 0)
+            {
+                RowsGrid.UnselectAll();
+                RowsGrid.CurrentCell = new DataGridCellInfo();
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         var cell = FindParent<DataGridCell>(source);
         if (cell == null || cell.Column == null)
         {
@@ -351,12 +547,51 @@ public partial class PhaseVisualizerView : UserControl
             && cell.Column.DisplayIndex != 0)
         {
             var boolRow = FindParent<DataGridRow>(cell);
-            if (boolRow?.Item is System.Data.DataRowView boolDataRowView)
+            if (boolRow?.Item is System.Data.DataRowView clickedRowView)
             {
-                if (boolDataRowView.Row.Table.Columns.Contains(sortKey)
-                    && boolDataRowView.Row[sortKey] is bool boolCurrent)
+                if (clickedRowView.Row.Table.Columns.Contains(sortKey)
+                    && clickedRowView.Row[sortKey] is bool currentValue)
                 {
-                    boolDataRowView.Row[sortKey] = !boolCurrent;
+                    var targetValue = !currentValue;
+                    var appliedToSelection = false;
+
+                    if (RowsGrid.SelectedItems.Count > 1)
+                    {
+                        var selectedRows = new List<System.Data.DataRowView>();
+                        var clickedInSelection = false;
+                        foreach (var selectedItem in RowsGrid.SelectedItems)
+                        {
+                            if (selectedItem is not System.Data.DataRowView selectedRowView)
+                            {
+                                continue;
+                            }
+
+                            selectedRows.Add(selectedRowView);
+                            if (ReferenceEquals(selectedRowView, clickedRowView))
+                            {
+                                clickedInSelection = true;
+                            }
+                        }
+
+                        if (clickedInSelection)
+                        {
+                            foreach (var selectedRow in selectedRows)
+                            {
+                                if (selectedRow.Row.Table.Columns.Contains(sortKey))
+                                {
+                                    selectedRow.Row[sortKey] = targetValue;
+                                }
+                            }
+
+                            appliedToSelection = true;
+                        }
+                    }
+
+                    if (!appliedToSelection)
+                    {
+                        clickedRowView.Row[sortKey] = targetValue;
+                    }
+
                     e.Handled = true;
                     return;
                 }
@@ -375,7 +610,43 @@ public partial class PhaseVisualizerView : UserControl
         }
 
         var current = dataRowView.Row["__selected"] is bool flag && flag;
-        dataRowView.Row["__selected"] = !current;
+        var selectionTargetValue = !current;
+        var selectionAppliedToSelection = false;
+
+        if (RowsGrid.SelectedItems.Count > 1)
+        {
+            var selectedRows = new List<System.Data.DataRowView>();
+            var clickedInSelection = false;
+            foreach (var selectedItem in RowsGrid.SelectedItems)
+            {
+                if (selectedItem is not System.Data.DataRowView selectedRowView)
+                {
+                    continue;
+                }
+
+                selectedRows.Add(selectedRowView);
+                if (ReferenceEquals(selectedRowView, dataRowView))
+                {
+                    clickedInSelection = true;
+                }
+            }
+
+            if (clickedInSelection)
+            {
+                foreach (var selectedRow in selectedRows)
+                {
+                    selectedRow.Row["__selected"] = selectionTargetValue;
+                }
+
+                selectionAppliedToSelection = true;
+            }
+        }
+
+        if (!selectionAppliedToSelection)
+        {
+            dataRowView.Row["__selected"] = selectionTargetValue;
+        }
+
         UpdateSelectAllCheckBoxState();
         e.Handled = true;
     }
@@ -489,6 +760,7 @@ public partial class PhaseVisualizerView : UserControl
 
             targetColumn.SortDirection = nextDirection;
             _viewModel.TrySortRows(sortKey, nextDirection);
+            _viewModel.SetTableLayoutState(CaptureTableLayoutState());
         }
         catch
         {

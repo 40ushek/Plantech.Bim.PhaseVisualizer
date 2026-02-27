@@ -25,6 +25,7 @@ internal sealed class PhaseStatePersistenceController
         bool useVisibleViewsForSearch,
         bool showObjectCountInStatus,
         IReadOnlyCollection<PhaseTableRowState> rows,
+        PhaseTableLayoutState? layout,
         ILogger log)
     {
         if (string.IsNullOrWhiteSpace(stateFilePath))
@@ -38,7 +39,8 @@ internal sealed class PhaseStatePersistenceController
             showAllPhases,
             useVisibleViewsForSearch,
             showObjectCountInStatus,
-            (rows ?? Array.Empty<PhaseTableRowState>()).ToList());
+            (rows ?? Array.Empty<PhaseTableRowState>()).ToList(),
+            layout);
 
         _stateController.Save(stateFilePath, snapshot, log);
         return snapshot;
