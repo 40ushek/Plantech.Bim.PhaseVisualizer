@@ -106,7 +106,7 @@ public partial class PhaseVisualizerView : UserControl
         {
             if (column.Type == PhaseValueType.Boolean)
             {
-                var useSwitchToggle = IsSwitchTogglePilotColumn(column.Key);
+                var useSwitchToggle = column.IsEditable;
                 RowsGrid.Columns.Add(new DataGridTemplateColumn
                 {
                     Header = column.Label,
@@ -207,11 +207,6 @@ public partial class PhaseVisualizerView : UserControl
         {
             VisualTree = root,
         };
-    }
-
-    private static bool IsSwitchTogglePilotColumn(string? columnKey)
-    {
-        return string.Equals(columnKey, "exclude_gratings", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Style CreateCenteredTemplateCellStyle()

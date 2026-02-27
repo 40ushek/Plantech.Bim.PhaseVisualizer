@@ -13,25 +13,25 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Grid Width="34" Height="18">
+                        <Grid Width="30" Height="16">
                             <Border
                                 x:Name="Track"
                                 Background="#FFD1D5DB"
                                 BorderBrush="#FF9CA3AF"
                                 BorderThickness="1"
-                                CornerRadius="9" />
+                                CornerRadius="8" />
                             <Ellipse
                                 x:Name="Thumb"
-                                Margin="1,1,17,1"
+                                Margin="1,1,15,1"
                                 Fill="White"
                                 Stroke="#FF9CA3AF"
                                 StrokeThickness="1" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Track" Property="Background" Value="#FF0B57D0" />
-                                <Setter TargetName="Track" Property="BorderBrush" Value="#FF0B57D0" />
-                                <Setter TargetName="Thumb" Property="Margin" Value="17,1,1,1" />
+                                <Setter TargetName="Track" Property="Background" Value="#FF374151" />
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#FF4B5563" />
+                                <Setter TargetName="Thumb" Property="Margin" Value="15,1,1,1" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Track" Property="Opacity" Value="0.55" />

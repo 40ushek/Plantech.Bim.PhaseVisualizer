@@ -1,7 +1,8 @@
 <UserControl
     x:Class="Plantech.Bim.PhaseVisualizer.UI.PhaseVisualizerView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:toggle="clr-namespace:Plantech.Bim.PhaseVisualizer.UI.Controls.Toggle">
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -10,33 +11,31 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel
-            Grid.Row="0"
-            Margin="0,0,0,4">
+        <StackPanel Grid.Row="0" Margin="0,0,0,4">
             <DockPanel Margin="0,0,0,3">
                 <TextBlock
-                    DockPanel.Dock="Left"
                     Margin="0,0,6,0"
                     VerticalAlignment="Center"
+                    DockPanel.Dock="Left"
                     Text="Preset:" />
                 <Button
-                    DockPanel.Dock="Right"
                     Width="70"
                     Margin="6,0,0,0"
                     Click="DeletePreset_Click"
-                    Content="Delete" />
+                    Content="Delete"
+                    DockPanel.Dock="Right" />
                 <Button
-                    DockPanel.Dock="Right"
                     Width="70"
                     Margin="6,0,0,0"
                     Click="SavePreset_Click"
-                    Content="Save" />
+                    Content="Save"
+                    DockPanel.Dock="Right" />
                 <Button
-                    DockPanel.Dock="Right"
                     Width="70"
                     Margin="6,0,0,0"
                     Click="LoadPreset_Click"
-                    Content="Load" />
+                    Content="Load"
+                    DockPanel.Dock="Right" />
                 <ComboBox
                     x:Name="PresetNameComboBox"
                     MinWidth="220"
@@ -49,8 +48,9 @@
 
             <DockPanel LastChildFill="False">
                 <Grid
-                    DockPanel.Dock="Right"
-                    VerticalAlignment="Center">
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    DockPanel.Dock="Left">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="16" />
@@ -59,43 +59,30 @@
 
                     <StackPanel
                         Grid.Column="0"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center">
-                        <CheckBox
+                        VerticalAlignment="Center"
+                        Orientation="Horizontal">
+                        <toggle:SwitchToggleControl
                             x:Name="ShowAllPhasesToggle"
                             Margin="0"
                             VerticalAlignment="Center"
                             IsChecked="{Binding ShowAllPhases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Checked="ShowAllPhasesToggle_Changed"
-                            Unchecked="ShowAllPhasesToggle_Changed" />
-                        <TextBlock
-                            Margin="4,0,0,0"
-                            VerticalAlignment="Center"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="#FF374151"
-                            Text="Show all phases" />
+                            Label="Show empty phases"
+                            ShowStateText="False"
+                            Toggled="ShowAllPhasesToggle_Changed" />
                     </StackPanel>
 
                     <StackPanel
                         Grid.Column="2"
-                        Orientation="Horizontal"
                         VerticalAlignment="Center"
-                        >
-                        <CheckBox
+                        Orientation="Horizontal">
+                        <toggle:SwitchToggleControl
                             x:Name="SearchScopeToggle"
                             Margin="0"
                             VerticalAlignment="Center"
                             IsChecked="{Binding UseVisibleViewsForSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                            Checked="SearchScopeToggle_Changed"
-                            Unchecked="SearchScopeToggle_Changed" />
-                        <TextBlock
-                            Margin="4,0,0,0"
-                            VerticalAlignment="Center"
-                            FontSize="12"
-                            FontWeight="SemiBold"
-                            Foreground="#FF374151"
-                            Text="Search in visible views" />
+                            Label="Search in visible views"
+                            ShowStateText="False"
+                            Toggled="SearchScopeToggle_Changed" />
                     </StackPanel>
                 </Grid>
             </DockPanel>
@@ -115,18 +102,18 @@
             Grid.Row="2"
             Margin="0,10,0,0"
             LastChildFill="False">
-            <CheckBox
+            <toggle:SwitchToggleControl
                 x:Name="ShowObjectCountToggle"
-                DockPanel.Dock="Left"
                 VerticalAlignment="Center"
+                DockPanel.Dock="Left"
                 IsChecked="{Binding ShowObjectCountInStatus, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                Checked="ShowObjectCountToggle_Changed"
-                Unchecked="ShowObjectCountToggle_Changed"
-                Content="Show object count in status (can be slow on large models)" />
+                Label="Show object count in status (can be slow on large models)"
+                ShowStateText="False"
+                Toggled="ShowObjectCountToggle_Changed" />
 
             <StackPanel
-                DockPanel.Dock="Right"
                 HorizontalAlignment="Right"
+                DockPanel.Dock="Right"
                 Orientation="Horizontal">
                 <Button
                     Width="100"
