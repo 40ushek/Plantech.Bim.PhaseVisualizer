@@ -22,6 +22,7 @@ internal static class PhaseTableLayoutStateCloner
                     Key = c.Key ?? string.Empty,
                     DisplayIndex = c.DisplayIndex,
                     Width = c.Width,
+                    WidthUnit = c.WidthUnit ?? string.Empty,
                 })
                 .ToList(),
             Sort = layout.Sort == null

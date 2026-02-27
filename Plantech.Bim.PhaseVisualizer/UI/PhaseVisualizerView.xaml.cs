@@ -3,6 +3,7 @@ using Plantech.Bim.PhaseVisualizer.UI.Controls.Toggle;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -14,7 +15,7 @@ namespace Plantech.Bim.PhaseVisualizer.UI;
 
 public partial class PhaseVisualizerView : UserControl
 {
-    private const string SpacerColumnKey = "__spacer";
+    private const string SelectedColumnKey = "__selected";
 
     private PhaseVisualizerViewModel? _viewModel;
     private CheckBox? _selectAllCheckBox;
@@ -75,7 +76,11 @@ public partial class PhaseVisualizerView : UserControl
         }
 
         RowsGrid.Columns.Clear();
-        var centeredTemplateCellStyle = CreateCenteredTemplateCellStyle();
+        var flexibleTextColumnKey = _viewModel.Columns
+            .FirstOrDefault(c =>
+                c.Type != PhaseValueType.Boolean
+                && !string.Equals(c.Key, "phase_number", StringComparison.OrdinalIgnoreCase))
+            ?.Key;
 
         _selectAllCheckBox = new CheckBox
         {
@@ -97,11 +102,11 @@ public partial class PhaseVisualizerView : UserControl
         {
             Header = _selectAllCheckBox,
             HeaderStyle = selectAllHeaderStyle,
-            CellStyle = centeredTemplateCellStyle,
             CellTemplate = CreateCenteredCheckBoxTemplate("[__selected]", isReadOnly: false),
             CellEditingTemplate = CreateCenteredCheckBoxTemplate("[__selected]", isReadOnly: false),
             Width = 48,
             CanUserSort = false,
+            CanUserReorder = false,
             IsReadOnly = false,
             SortMemberPath = "__selected",
         });
@@ -115,7 +120,6 @@ public partial class PhaseVisualizerView : UserControl
                 {
                     Header = column.Label,
                     IsReadOnly = !column.IsEditable,
-                    CellStyle = centeredTemplateCellStyle,
                     CellTemplate = useSwitchToggle
                         ? CreateCenteredSwitchToggleTemplate($"[{column.Key}]", !column.IsEditable)
                         : CreateCenteredCheckBoxTemplate($"[{column.Key}]", !column.IsEditable),
@@ -128,7 +132,7 @@ public partial class PhaseVisualizerView : UserControl
             }
             else
             {
-                RowsGrid.Columns.Add(new DataGridTextColumn
+                var textColumn = new DataGridTextColumn
                 {
                     Header = column.Label,
                     Binding = new Binding($"[{column.Key}]")
@@ -139,28 +143,35 @@ public partial class PhaseVisualizerView : UserControl
                             : UpdateSourceTrigger.Default,
                     },
                     IsReadOnly = !column.IsEditable,
-                    Width = column.Key == "phase_number"
-                        ? new DataGridLength(78)
-                        : new DataGridLength(1, DataGridLengthUnitType.Star),
+                    ElementStyle = CreateCenteredTextDisplayStyle(),
+                    EditingElementStyle = CreateCenteredTextEditingStyle(),
                     SortMemberPath = column.Key,
-                });
+                };
+
+                if (string.Equals(column.Key, "phase_number", StringComparison.OrdinalIgnoreCase))
+                {
+                    textColumn.Width = new DataGridLength(78, DataGridLengthUnitType.Pixel);
+                    textColumn.MinWidth = 64;
+                    textColumn.MaxWidth = 120;
+                }
+                else if (!string.IsNullOrWhiteSpace(flexibleTextColumnKey)
+                    && string.Equals(column.Key, flexibleTextColumnKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Only one text column is elastic to avoid "infinite last-column stretch".
+                    textColumn.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
+                    textColumn.MinWidth = 120;
+                    textColumn.MaxWidth = 420;
+                }
+                else
+                {
+                    textColumn.Width = DataGridLength.SizeToHeader;
+                    textColumn.MinWidth = 90;
+                    textColumn.MaxWidth = 320;
+                }
+
+                RowsGrid.Columns.Add(textColumn);
             }
         }
-
-        // Trailing spacer makes right-side resizing of real columns easier.
-        RowsGrid.Columns.Add(new DataGridTemplateColumn
-        {
-            Header = string.Empty,
-            IsReadOnly = true,
-            CanUserSort = false,
-            CanUserReorder = false,
-            CanUserResize = false,
-            Width = new DataGridLength(1, DataGridLengthUnitType.Star),
-            MinWidth = 28,
-            SortMemberPath = SpacerColumnKey,
-            CellTemplate = CreateEmptyCellTemplate(),
-            CellEditingTemplate = CreateEmptyCellTemplate(),
-        });
 
         RowsGrid.ItemsSource = _viewModel.RowsView;
         ApplySavedTableLayout();
@@ -174,20 +185,32 @@ public partial class PhaseVisualizerView : UserControl
         {
             var key = column.SortMemberPath?.Trim() ?? string.Empty;
             if (string.IsNullOrWhiteSpace(key)
-                || string.Equals(key, SpacerColumnKey, StringComparison.OrdinalIgnoreCase))
+                || string.Equals(key, SelectedColumnKey, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
             var width = column.ActualWidth;
-            if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d)
+            var widthUnit = column.Width.UnitType.ToString();
+            width = column.Width.Value;
+            if (column.Width.UnitType == DataGridLengthUnitType.Pixel
+                && (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d))
             {
-                width = column.Width.DisplayValue;
+                width = column.ActualWidth;
             }
 
-            if (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d)
+            if (column.Width.UnitType == DataGridLengthUnitType.Star
+                && (double.IsNaN(width) || double.IsInfinity(width) || width <= 0d))
             {
-                width = 80d;
+                width = 1d;
+            }
+
+            if ((column.Width.UnitType == DataGridLengthUnitType.Auto
+                 || column.Width.UnitType == DataGridLengthUnitType.SizeToCells
+                 || column.Width.UnitType == DataGridLengthUnitType.SizeToHeader)
+                && (double.IsNaN(width) || double.IsInfinity(width)))
+            {
+                width = 0d;
             }
 
             layout.Columns.Add(new PhaseTableColumnLayoutState
@@ -195,6 +218,7 @@ public partial class PhaseVisualizerView : UserControl
                 Key = key,
                 DisplayIndex = column.DisplayIndex,
                 Width = width,
+                WidthUnit = widthUnit,
             });
 
             if (column.SortDirection.HasValue)
@@ -237,52 +261,71 @@ public partial class PhaseVisualizerView : UserControl
         {
             if (savedColumn == null
                 || string.IsNullOrWhiteSpace(savedColumn.Key)
+                || string.Equals(savedColumn.Key, SelectedColumnKey, StringComparison.OrdinalIgnoreCase)
                 || !columnsByKey.TryGetValue(savedColumn.Key, out var targetColumn))
             {
                 continue;
             }
 
-            if (savedColumn.Width > 0d
-                && !double.IsNaN(savedColumn.Width)
-                && !double.IsInfinity(savedColumn.Width))
+            if (TryCreateSavedWidth(savedColumn, out var savedWidth))
             {
-                targetColumn.Width = new DataGridLength(savedColumn.Width, DataGridLengthUnitType.Pixel);
+                targetColumn.Width = savedWidth;
             }
         }
 
-        foreach (var savedColumn in layout.Columns ?? new List<PhaseTableColumnLayoutState>())
+        var selectColumn = columnsByKey.TryGetValue(SelectedColumnKey, out var selected)
+            ? selected
+            : null;
+        if (selectColumn != null)
         {
-            if (savedColumn == null
-                || string.IsNullOrWhiteSpace(savedColumn.Key)
-                || !columnsByKey.TryGetValue(savedColumn.Key, out var targetColumn))
-            {
-                continue;
-            }
-
-            var maxIndex = Math.Max(0, RowsGrid.Columns.Count - 1);
-            var targetIndex = savedColumn.DisplayIndex;
-            if (targetIndex < 0)
-            {
-                targetIndex = 0;
-            }
-            else if (targetIndex > maxIndex)
-            {
-                targetIndex = maxIndex;
-            }
-
-            try
-            {
-                targetColumn.DisplayIndex = targetIndex;
-            }
-            catch
-            {
-                // Keep layout restore best-effort.
-            }
+            selectColumn.DisplayIndex = 0;
         }
 
-        if (columnsByKey.TryGetValue(SpacerColumnKey, out var spacerColumn))
+        var hasLegacyInternalColumns = (layout.Columns ?? new List<PhaseTableColumnLayoutState>())
+            .Any(saved =>
+                saved != null
+                && !string.IsNullOrWhiteSpace(saved.Key)
+                && string.Equals(saved.Key, SelectedColumnKey, StringComparison.OrdinalIgnoreCase));
+
+        if (!hasLegacyInternalColumns)
         {
-            spacerColumn.DisplayIndex = RowsGrid.Columns.Count - 1;
+            var savedOrderByKey = (layout.Columns ?? new List<PhaseTableColumnLayoutState>())
+                .Where(saved =>
+                    saved != null
+                    && !string.IsNullOrWhiteSpace(saved.Key)
+                    && !string.Equals(saved.Key, SelectedColumnKey, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(saved => saved.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.First().DisplayIndex,
+                    StringComparer.OrdinalIgnoreCase);
+
+            var reorderedColumns = RowsGrid.Columns
+                .Where(column =>
+                {
+                    var key = column.SortMemberPath?.Trim() ?? string.Empty;
+                    return !string.IsNullOrWhiteSpace(key)
+                        && !string.Equals(key, SelectedColumnKey, StringComparison.OrdinalIgnoreCase);
+                })
+                .OrderBy(column =>
+                {
+                    var key = column.SortMemberPath?.Trim() ?? string.Empty;
+                    return savedOrderByKey.TryGetValue(key, out var order) ? order : int.MaxValue;
+                })
+                .ThenBy(column => column.DisplayIndex)
+                .ToList();
+
+            for (var index = 0; index < reorderedColumns.Count; index++)
+            {
+                try
+                {
+                    reorderedColumns[index].DisplayIndex = index + 1;
+                }
+                catch
+                {
+                    // Keep layout restore best-effort.
+                }
+            }
         }
 
         var sort = layout.Sort;
@@ -341,18 +384,6 @@ public partial class PhaseVisualizerView : UserControl
         };
     }
 
-    private static DataTemplate CreateEmptyCellTemplate()
-    {
-        var border = new FrameworkElementFactory(typeof(Border));
-        border.SetValue(Border.PaddingProperty, new Thickness(0));
-        border.SetValue(IsHitTestVisibleProperty, false);
-
-        return new DataTemplate
-        {
-            VisualTree = border,
-        };
-    }
-
     private static DataTemplate CreateCenteredSwitchToggleTemplate(string bindingPath, bool isReadOnly)
     {
         var root = new FrameworkElementFactory(typeof(Grid));
@@ -384,12 +415,22 @@ public partial class PhaseVisualizerView : UserControl
         };
     }
 
-    private static Style CreateCenteredTemplateCellStyle()
+    private static Style CreateCenteredTextDisplayStyle()
     {
-        var style = new Style(typeof(DataGridCell));
-        style.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
-        style.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
-        style.Setters.Add(new Setter(PaddingProperty, new Thickness(0)));
+        var style = new Style(typeof(TextBlock));
+        style.Setters.Add(new Setter(VerticalAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis));
+        style.Setters.Add(new Setter(TextBlock.MarginProperty, new Thickness(6, 0, 0, 0)));
+        return style;
+    }
+
+    private static Style CreateCenteredTextEditingStyle()
+    {
+        var style = new Style(typeof(TextBox));
+        style.Setters.Add(new Setter(VerticalAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(TextBox.PaddingProperty, new Thickness(6, 0, 0, 0)));
+        style.Setters.Add(new Setter(TextBox.MarginProperty, new Thickness(0)));
         return style;
     }
 
@@ -814,6 +855,59 @@ public partial class PhaseVisualizerView : UserControl
         finally
         {
             _isReloadingRows = false;
+        }
+    }
+
+    private static bool TryCreateSavedWidth(PhaseTableColumnLayoutState savedColumn, out DataGridLength width)
+    {
+        width = default;
+        if (savedColumn == null
+            || string.IsNullOrWhiteSpace(savedColumn.WidthUnit))
+        {
+            // Legacy entries (without width unit) are ignored to keep default star sizing.
+            return false;
+        }
+
+        if (!Enum.TryParse(savedColumn.WidthUnit, true, out DataGridLengthUnitType unitType))
+        {
+            return false;
+        }
+
+        switch (unitType)
+        {
+            case DataGridLengthUnitType.Pixel:
+            {
+                var pixel = savedColumn.Width;
+                if (double.IsNaN(pixel) || double.IsInfinity(pixel) || pixel <= 0d)
+                {
+                    return false;
+                }
+
+                width = new DataGridLength(pixel, DataGridLengthUnitType.Pixel);
+                return true;
+            }
+            case DataGridLengthUnitType.Star:
+            {
+                var star = savedColumn.Width;
+                if (double.IsNaN(star) || double.IsInfinity(star) || star <= 0d)
+                {
+                    star = 1d;
+                }
+
+                width = new DataGridLength(star, DataGridLengthUnitType.Star);
+                return true;
+            }
+            case DataGridLengthUnitType.Auto:
+                width = DataGridLength.Auto;
+                return true;
+            case DataGridLengthUnitType.SizeToCells:
+                width = DataGridLength.SizeToCells;
+                return true;
+            case DataGridLengthUnitType.SizeToHeader:
+                width = DataGridLength.SizeToHeader;
+                return true;
+            default:
+                return false;
         }
     }
 }

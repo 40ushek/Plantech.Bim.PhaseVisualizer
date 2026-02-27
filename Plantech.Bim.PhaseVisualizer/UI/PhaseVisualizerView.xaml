@@ -94,9 +94,14 @@
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
+            ColumnHeaderHeight="28"
+            GridLinesVisibility="All"
+            HorizontalGridLinesBrush="#FFBFC5CE"
+            RowHeight="28"
             IsReadOnly="False"
             SelectionMode="Extended"
-            SelectionUnit="FullRow" />
+            SelectionUnit="FullRow"
+            VerticalGridLinesBrush="#FFBFC5CE" />
 
         <DockPanel
             Grid.Row="2"

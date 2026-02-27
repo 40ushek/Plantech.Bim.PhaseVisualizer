@@ -39,6 +39,7 @@ internal sealed class PhaseTableColumnLayoutState
     public string Key { get; set; } = string.Empty;
     public int DisplayIndex { get; set; }
     public double Width { get; set; }
+    public string WidthUnit { get; set; } = string.Empty;
 }
 
 internal sealed class PhaseTableSortLayoutState
