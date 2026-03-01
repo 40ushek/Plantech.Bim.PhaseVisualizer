@@ -1,6 +1,5 @@
 using Plantech.Bim.PhaseVisualizer.Common;
 using Plantech.Bim.PhaseVisualizer.Orchestration;
-using Plantech.Bim.PhaseVisualizer.UI;
 using System;
 using System.ComponentModel;
 using System.Threading;
@@ -18,7 +17,7 @@ public partial class PhaseVisualizerWindow : PluginWindowBase
         {
             throw new ArgumentNullException(nameof(pluginViewModel));
         }
-
+        this.DisableDefaultStyle();
         InitializeComponent();
         DataContext = pluginViewModel;
         _uiViewModel = CreateDefaultViewModel();

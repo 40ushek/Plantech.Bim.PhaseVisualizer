@@ -48,8 +48,8 @@
 
             <DockPanel LastChildFill="False">
                 <Grid
-                    VerticalAlignment="Center"
                     HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
                     DockPanel.Dock="Left">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -97,8 +97,8 @@
             ColumnHeaderHeight="28"
             GridLinesVisibility="All"
             HorizontalGridLinesBrush="#FFBFC5CE"
-            RowHeight="28"
             IsReadOnly="False"
+            RowHeight="28"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
             VerticalGridLinesBrush="#FFBFC5CE" />

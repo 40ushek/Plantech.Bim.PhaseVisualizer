@@ -20,16 +20,19 @@
                                 BorderBrush="#FF9CA3AF"
                                 BorderThickness="1"
                                 CornerRadius="8" />
-                            <Ellipse
+                            <Grid
                                 x:Name="Thumb"
                                 Width="10"
                                 Height="10"
                                 Margin="3,0,0,0"
                                 HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                Fill="#FF9CA3AF"
-                                Stroke="#FF6B7280"
-                                StrokeThickness="1" />
+                                VerticalAlignment="Center">
+                                <Ellipse
+                                    x:Name="ThumbCircle"
+                                    Fill="#FF9CA3AF"
+                                    Stroke="#FF6B7280"
+                                    StrokeThickness="1" />
+                            </Grid>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
@@ -39,8 +42,8 @@
                                 <Setter TargetName="Thumb" Property="Height" Value="14" />
                                 <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
                                 <Setter TargetName="Thumb" Property="Margin" Value="0,0,1,0" />
-                                <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFFFF" />
-                                <Setter TargetName="Thumb" Property="Stroke" Value="#FF4B5563" />
+                                <Setter TargetName="ThumbCircle" Property="Fill" Value="#FFFFFFFF" />
+                                <Setter TargetName="ThumbCircle" Property="Stroke" Value="#FF4B5563" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Track" Property="Opacity" Value="0.55" />
