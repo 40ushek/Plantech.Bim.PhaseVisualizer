@@ -1,5 +1,5 @@
-using Plantech.Bim.PhaseVisualizer.Configuration;
 using Plantech.Bim.PhaseVisualizer.Common;
+using Plantech.Bim.PhaseVisualizer.Configuration;
 using Plantech.Bim.PhaseVisualizer.Domain;
 using Serilog;
 using System;
@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using Tekla.Structures;
 using Tekla.Structures.Filtering;
 using Tekla.Structures.Filtering.Categories;
-using Tekla.Structures;
 using Tekla.Structures.Model;
 using Tekla.Structures.Model.UI;
 
@@ -174,7 +174,7 @@ internal sealed class TeklaPhaseDataProvider
         }
 
         var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
-        ModelObjectEnumerator.AutoFetch = true;
+        ModelObjectEnumerator.AutoFetch = false;
         var result = new Dictionary<int, int>();
         try
         {
@@ -184,12 +184,6 @@ internal sealed class TeklaPhaseDataProvider
                 {
                     var filter = BuildPhaseFilter(phase.PhaseNumber);
                     var objects = selector.GetObjectsByFilter(filter);
-
-                    //if (phase.PhaseNumber == 127)
-                    //    while (objects.MoveNext())
-                    //    {
-                    //        var o = objects.Current;
-                    //    }
 
                     var count = objects?.GetSize() ?? 0;
                     if (count > 0)
@@ -234,7 +228,7 @@ internal sealed class TeklaPhaseDataProvider
         var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
         var assemblyByKey = new Dictionary<string, Assembly?>(StringComparer.Ordinal);
         var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
-        ModelObjectEnumerator.AutoFetch = true;
+        ModelObjectEnumerator.AutoFetch = false;
         try
         {
             var allObjects = selector.GetAllObjects();
@@ -264,7 +258,7 @@ internal sealed class TeklaPhaseDataProvider
         var uniqueObjectKeys = new HashSet<string>(StringComparer.Ordinal);
         var assemblyByKey = new Dictionary<string, Assembly?>(StringComparer.Ordinal);
         var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
-        ModelObjectEnumerator.AutoFetch = true;
+        ModelObjectEnumerator.AutoFetch = false;
         try
         {
             var visibleViews = ViewHandler.GetVisibleViews();
