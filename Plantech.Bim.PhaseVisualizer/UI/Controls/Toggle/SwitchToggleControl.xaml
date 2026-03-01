@@ -16,22 +16,31 @@
                         <Grid Width="30" Height="16">
                             <Border
                                 x:Name="Track"
-                                Background="#FFD1D5DB"
+                                Background="#FFFFFFFF"
                                 BorderBrush="#FF9CA3AF"
                                 BorderThickness="1"
                                 CornerRadius="8" />
                             <Ellipse
                                 x:Name="Thumb"
-                                Margin="1,1,15,1"
-                                Fill="White"
-                                Stroke="#FF9CA3AF"
+                                Width="10"
+                                Height="10"
+                                Margin="3,0,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                Fill="#FF9CA3AF"
+                                Stroke="#FF6B7280"
                                 StrokeThickness="1" />
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Track" Property="Background" Value="#FF374151" />
                                 <Setter TargetName="Track" Property="BorderBrush" Value="#FF4B5563" />
-                                <Setter TargetName="Thumb" Property="Margin" Value="15,1,1,1" />
+                                <Setter TargetName="Thumb" Property="Width" Value="14" />
+                                <Setter TargetName="Thumb" Property="Height" Value="14" />
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,1,0" />
+                                <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFFFF" />
+                                <Setter TargetName="Thumb" Property="Stroke" Value="#FF4B5563" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Track" Property="Opacity" Value="0.55" />
