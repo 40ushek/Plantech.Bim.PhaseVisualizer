@@ -102,7 +102,7 @@ public partial class SwitchToggleControl : UserControl
         ((SwitchToggleControl)d).UpdateStateText();
     }
 
-    private void OnSwitchToggled(object sender, RoutedEventArgs e)
+    private void OnSwitchClicked(object sender, RoutedEventArgs e)
     {
         UpdateStateText();
         Toggled?.Invoke(this, e);

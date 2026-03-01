@@ -70,8 +70,7 @@
             VerticalAlignment="Center"
             IsChecked="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
             Style="{StaticResource SwitchToggleButtonStyle}"
-            Checked="OnSwitchToggled"
-            Unchecked="OnSwitchToggled" />
+            Click="OnSwitchClicked" />
 
         <TextBlock
             x:Name="LabelTextBlock"
