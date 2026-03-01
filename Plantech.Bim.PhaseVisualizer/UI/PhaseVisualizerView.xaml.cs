@@ -18,8 +18,8 @@ public partial class PhaseVisualizerView : UserControl
     private const string SelectedColumnKey = "__selected";
 
     private PhaseVisualizerViewModel? _viewModel;
-    private CheckBox? _selectAllCheckBox;
-    private bool _isUpdatingSelectAllCheckBox;
+    private SwitchToggleControl? _selectAllToggle;
+    private bool _isUpdatingSelectAllToggle;
     private bool _isInitialized;
     private bool _isReloadingRows;
 
@@ -82,29 +82,31 @@ public partial class PhaseVisualizerView : UserControl
                 && !string.Equals(c.Key, "phase_number", StringComparison.OrdinalIgnoreCase))
             ?.Key;
 
-        _selectAllCheckBox = new CheckBox
+        _selectAllToggle = new SwitchToggleControl
         {
-            IsThreeState = true,
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            ShowLabel = false,
+            ShowStateText = false,
+            IsChecked = false,
             Margin = new Thickness(0),
-            Padding = new Thickness(0),
             ToolTip = "Select/Deselect all rows",
         };
-        _selectAllCheckBox.Click += SelectAllCheckBox_Click;
+        _selectAllToggle.Toggled += SelectAllToggle_Toggled;
 
         var selectAllHeaderStyle = new Style(typeof(DataGridColumnHeader));
         selectAllHeaderStyle.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
         selectAllHeaderStyle.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
         selectAllHeaderStyle.Setters.Add(new Setter(PaddingProperty, new Thickness(0)));
+        var selectColumnCellStyle = CreateCenteredCellStyleForSelectionColumn();
 
         RowsGrid.Columns.Add(new DataGridTemplateColumn
         {
-            Header = _selectAllCheckBox,
+            Header = _selectAllToggle,
             HeaderStyle = selectAllHeaderStyle,
-            CellTemplate = CreateCenteredCheckBoxTemplate("[__selected]", isReadOnly: false),
-            CellEditingTemplate = CreateCenteredCheckBoxTemplate("[__selected]", isReadOnly: false),
-            Width = 48,
+            CellStyle = selectColumnCellStyle,
+            CellTemplate = CreateCenteredSwitchToggleTemplate("[__selected]", isReadOnly: false),
+            CellEditingTemplate = CreateCenteredSwitchToggleTemplate("[__selected]", isReadOnly: false),
+            Width = 64,
+            MinWidth = 64,
             CanUserSort = false,
             CanUserReorder = false,
             IsReadOnly = false,
@@ -175,7 +177,7 @@ public partial class PhaseVisualizerView : UserControl
 
         RowsGrid.ItemsSource = _viewModel.RowsView;
         ApplySavedTableLayout();
-        UpdateSelectAllCheckBoxState();
+        UpdateSelectAllToggleState();
     }
 
     private PhaseTableLayoutState CaptureTableLayoutState()
@@ -434,6 +436,19 @@ public partial class PhaseVisualizerView : UserControl
         return style;
     }
 
+    private static Style CreateCenteredCellStyleForSelectionColumn()
+    {
+        var themeStyle = Application.Current?.TryFindResource(typeof(DataGridCell)) as Style;
+        var style = themeStyle != null
+            ? new Style(typeof(DataGridCell), themeStyle)
+            : new Style(typeof(DataGridCell));
+
+        style.Setters.Add(new Setter(HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
+        style.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Center));
+        style.Setters.Add(new Setter(PaddingProperty, new Thickness(0)));
+        return style;
+    }
+
     private void Refresh_Click(object sender, RoutedEventArgs e)
     {
         ReloadRows(
@@ -688,18 +703,18 @@ public partial class PhaseVisualizerView : UserControl
             dataRowView.Row["__selected"] = selectionTargetValue;
         }
 
-        UpdateSelectAllCheckBoxState();
+        UpdateSelectAllToggleState();
         e.Handled = true;
     }
 
-    private void SelectAllCheckBox_Click(object sender, RoutedEventArgs e)
+    private void SelectAllToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        if (_viewModel == null || _isUpdatingSelectAllCheckBox || _selectAllCheckBox == null)
+        if (_viewModel == null || _isUpdatingSelectAllToggle || _selectAllToggle == null)
         {
             return;
         }
 
-        var targetChecked = _selectAllCheckBox.IsChecked == true;
+        var targetChecked = _selectAllToggle.IsChecked;
         RowsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
         RowsGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
@@ -711,12 +726,12 @@ public partial class PhaseVisualizerView : UserControl
             }
         }
 
-        UpdateSelectAllCheckBoxState();
+        UpdateSelectAllToggleState();
     }
 
-    private void UpdateSelectAllCheckBoxState()
+    private void UpdateSelectAllToggleState()
     {
-        if (_viewModel == null || _selectAllCheckBox == null)
+        if (_viewModel == null || _selectAllToggle == null)
         {
             return;
         }
@@ -737,20 +752,14 @@ public partial class PhaseVisualizerView : UserControl
             }
         }
 
-        _isUpdatingSelectAllCheckBox = true;
+        _isUpdatingSelectAllToggle = true;
         try
         {
-            _selectAllCheckBox.IsChecked = total == 0
-                ? false
-                : selected == 0
-                    ? false
-                    : selected == total
-                        ? true
-                        : (bool?)null;
+            _selectAllToggle.IsChecked = total > 0 && selected == total;
         }
         finally
         {
-            _isUpdatingSelectAllCheckBox = false;
+            _isUpdatingSelectAllToggle = false;
         }
     }
 
