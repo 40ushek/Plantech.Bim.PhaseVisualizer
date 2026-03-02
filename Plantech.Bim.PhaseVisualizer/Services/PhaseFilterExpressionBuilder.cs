@@ -61,6 +61,13 @@ internal sealed class PhaseFilterExpressionBuilder
         {
             AddAndFilter(
                 phaseGroup,
+                BuildTeklaFilterReferenceExpression(
+                    attributeFilter,
+                    criteria.PhaseNumber,
+                    diagnostics));
+
+            AddAndFilter(
+                phaseGroup,
                 BuildAttributeExpression(
                     attributeFilter,
                     criteria.PhaseNumber,
@@ -87,70 +94,28 @@ internal sealed class PhaseFilterExpressionBuilder
         int phaseNumber,
         IList<string> diagnostics)
     {
-        if (attributeFilter == null)
+        if (attributeFilter == null || string.IsNullOrWhiteSpace(attributeFilter.TargetAttribute))
         {
             return null;
         }
 
-        var expressions = new List<FilterExpression>();
-        var teklaFilterExpression = BuildTeklaFilterReferenceExpression(attributeFilter, phaseNumber, diagnostics);
-        if (teklaFilterExpression != null)
-        {
-            expressions.Add(teklaFilterExpression);
-        }
-
-        if (string.IsNullOrWhiteSpace(attributeFilter.TargetAttribute))
-        {
-            return expressions.Count switch
-            {
-                0 => null,
-                1 => expressions[0],
-                _ => BuildAndGroup(expressions),
-            };
-        }
-
         var targetAttribute = attributeFilter.TargetAttribute.Trim();
-        FilterExpression? targetExpression = null;
 
         if (TryBuildConfiguredRuleExpression(attributeFilter, phaseNumber, diagnostics, out var configuredRuleExpression))
         {
-            targetExpression = configuredRuleExpression;
-        }
-        else if (TryBuildLegacyExpression(
-                     attributeFilter,
-                     phaseNumber,
-                     diagnostics,
-                     out var legacyExpression))
-        {
-            targetExpression = legacyExpression;
-        }
-        else
-        {
-            targetExpression = BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
+            return configuredRuleExpression;
         }
 
-        if (targetExpression != null)
+        if (TryBuildLegacyExpression(
+                attributeFilter,
+                phaseNumber,
+                diagnostics,
+                out var legacyExpression))
         {
-            expressions.Add(targetExpression);
+            return legacyExpression;
         }
 
-        return expressions.Count switch
-        {
-            0 => null,
-            1 => expressions[0],
-            _ => BuildAndGroup(expressions),
-        };
-    }
-
-    private static BinaryFilterExpressionCollection BuildAndGroup(IEnumerable<FilterExpression> expressions)
-    {
-        var group = new BinaryFilterExpressionCollection();
-        foreach (var expression in expressions)
-        {
-            AddAndFilter(group, expression);
-        }
-
-        return group;
+        return BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
     }
 
     private static FilterExpression? BuildTeklaFilterReferenceExpression(
