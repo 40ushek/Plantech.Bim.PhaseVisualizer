@@ -140,6 +140,7 @@ internal sealed class PhaseTableConfigValidator
 
         var rawAttribute = raw.Attribute?.Trim() ?? string.Empty;
         var rawTargetAttribute = raw.TargetAttribute?.Trim() ?? string.Empty;
+        var rawTeklaFilterName = raw.TeklaFilterName?.Trim() ?? string.Empty;
         var rawBooleanMode = raw.BooleanMode?.Trim() ?? string.Empty;
         var rawApplyRule = raw.ApplyRule;
 
@@ -147,6 +148,7 @@ internal sealed class PhaseTableConfigValidator
         var normalizedAttribute = string.Empty;
         PhaseColumnObjectType? normalizedTargetObjectType = null;
         var normalizedTargetAttribute = string.Empty;
+        var normalizedTeklaFilterName = string.Empty;
         var normalizedBooleanMode = string.Empty;
         PhaseApplyRuleConfig? normalizedApplyRule = null;
 
@@ -208,6 +210,7 @@ internal sealed class PhaseTableConfigValidator
             }
 
             normalizedBooleanMode = NormalizeBooleanMode(rawBooleanMode, key, raw.Type, log);
+            normalizedTeklaFilterName = NormalizeTeklaFilterName(rawTeklaFilterName, key, raw.Type, raw.Editable, log);
 
             if (rawApplyRule != null)
             {
@@ -295,6 +298,13 @@ internal sealed class PhaseTableConfigValidator
                     "PhaseVisualizer config column {Key} ignored applyRule because only editable columns support it.",
                     key);
             }
+
+            if (!string.IsNullOrWhiteSpace(rawTeklaFilterName))
+            {
+                log?.Warning(
+                    "PhaseVisualizer config column {Key} ignored teklaFilterName because only editable columns support it.",
+                    key);
+            }
         }
 
         normalized = new PhaseColumnConfig
@@ -307,6 +317,7 @@ internal sealed class PhaseTableConfigValidator
             Attribute = normalizedAttribute,
             TargetObjectType = normalizedTargetObjectType,
             TargetAttribute = normalizedTargetAttribute,
+            TeklaFilterName = normalizedTeklaFilterName,
             BooleanMode = normalizedBooleanMode,
             ApplyRule = normalizedApplyRule,
             Aggregate = raw.Aggregate,
@@ -469,6 +480,39 @@ internal sealed class PhaseTableConfigValidator
             rawBooleanMode,
             BooleanModePositiveNumber);
         return string.Empty;
+    }
+
+    private static string NormalizeTeklaFilterName(
+        string rawTeklaFilterName,
+        string columnKey,
+        PhaseValueType valueType,
+        bool editable,
+        ILogger? log)
+    {
+        if (string.IsNullOrWhiteSpace(rawTeklaFilterName))
+        {
+            return string.Empty;
+        }
+
+        if (!editable)
+        {
+            log?.Warning(
+                "PhaseVisualizer config column {Key} ignored teklaFilterName because only editable columns support it.",
+                columnKey);
+            return string.Empty;
+        }
+
+        if (valueType != PhaseValueType.Boolean)
+        {
+            log?.Warning(
+                "PhaseVisualizer config column {Key} ignored teklaFilterName '{TeklaFilterName}' because column type is {Type}, expected Boolean.",
+                columnKey,
+                rawTeklaFilterName,
+                valueType);
+            return string.Empty;
+        }
+
+        return rawTeklaFilterName;
     }
 }
 

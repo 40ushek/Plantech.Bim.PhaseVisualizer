@@ -9,6 +9,7 @@ internal sealed class PhaseColumnPresentation
     public string Label { get; set; } = string.Empty;
     public PhaseColumnObjectType? TargetObjectType { get; set; }
     public string TargetAttribute { get; set; } = string.Empty;
+    public string TeklaFilterName { get; set; } = string.Empty;
     public string BooleanMode { get; set; } = string.Empty;
     public PhaseApplyRuleConfig? ApplyRule { get; set; }
     public PhaseAggregateType Aggregate { get; set; } = PhaseAggregateType.First;

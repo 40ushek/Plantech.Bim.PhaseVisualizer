@@ -1,7 +1,10 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
 using Plantech.Bim.PhaseVisualizer.Rules;
+using Plantech.Bim.PhaseVisualizer.Common;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using Tekla.Structures.Filtering;
 using Tekla.Structures.Filtering.Categories;
@@ -10,6 +13,7 @@ namespace Plantech.Bim.PhaseVisualizer.Services;
 
 internal sealed class PhaseFilterExpressionBuilder
 {
+    private const string TeklaViewFilterExtension = ".SObjGrp";
     private static readonly ApplyRuleCompiler ApplyRuleCompiler = new();
 
     public BinaryFilterExpressionCollection Build(IReadOnlyCollection<PhaseSelectionCriteria>? selection)
@@ -83,28 +87,159 @@ internal sealed class PhaseFilterExpressionBuilder
         int phaseNumber,
         IList<string> diagnostics)
     {
-        if (attributeFilter == null || string.IsNullOrWhiteSpace(attributeFilter.TargetAttribute))
+        if (attributeFilter == null)
         {
             return null;
         }
 
+        var expressions = new List<FilterExpression>();
+        var teklaFilterExpression = BuildTeklaFilterReferenceExpression(attributeFilter, phaseNumber, diagnostics);
+        if (teklaFilterExpression != null)
+        {
+            expressions.Add(teklaFilterExpression);
+        }
+
+        if (string.IsNullOrWhiteSpace(attributeFilter.TargetAttribute))
+        {
+            return expressions.Count switch
+            {
+                0 => null,
+                1 => expressions[0],
+                _ => BuildAndGroup(expressions),
+            };
+        }
+
         var targetAttribute = attributeFilter.TargetAttribute.Trim();
+        FilterExpression? targetExpression = null;
 
         if (TryBuildConfiguredRuleExpression(attributeFilter, phaseNumber, diagnostics, out var configuredRuleExpression))
         {
-            return configuredRuleExpression;
+            targetExpression = configuredRuleExpression;
         }
-
-        if (TryBuildLegacyExpression(
-                attributeFilter,
-                phaseNumber,
-                diagnostics,
-                out var legacyExpression))
+        else if (TryBuildLegacyExpression(
+                     attributeFilter,
+                     phaseNumber,
+                     diagnostics,
+                     out var legacyExpression))
         {
-            return legacyExpression;
+            targetExpression = legacyExpression;
+        }
+        else
+        {
+            targetExpression = BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
         }
 
-        return BuildGenericTargetAttributeExpression(attributeFilter, targetAttribute, phaseNumber, diagnostics);
+        if (targetExpression != null)
+        {
+            expressions.Add(targetExpression);
+        }
+
+        return expressions.Count switch
+        {
+            0 => null,
+            1 => expressions[0],
+            _ => BuildAndGroup(expressions),
+        };
+    }
+
+    private static BinaryFilterExpressionCollection BuildAndGroup(IEnumerable<FilterExpression> expressions)
+    {
+        var group = new BinaryFilterExpressionCollection();
+        foreach (var expression in expressions)
+        {
+            AddAndFilter(group, expression);
+        }
+
+        return group;
+    }
+
+    private static FilterExpression? BuildTeklaFilterReferenceExpression(
+        PhaseAttributeFilter attributeFilter,
+        int phaseNumber,
+        IList<string> diagnostics)
+    {
+        var filterName = attributeFilter.TeklaFilterName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(filterName))
+        {
+            return null;
+        }
+
+        if (!IsTruthy(attributeFilter.Value))
+        {
+            return null;
+        }
+
+        if (!TryResolveTeklaFilterPath(filterName, out var fullPath, out var resolveError))
+        {
+            diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' not resolved ({resolveError}), filter ignored.");
+            return null;
+        }
+
+        try
+        {
+            var filter = new Filter(fullPath, CultureInfo.InvariantCulture);
+            var expression = filter.FilterExpression;
+            if (expression == null)
+            {
+                diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' has empty expression, filter ignored.");
+            }
+
+            return expression;
+        }
+        catch (Exception ex)
+        {
+            diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' load failed ({ex.Message}), filter ignored.");
+            return null;
+        }
+    }
+
+    private static bool TryResolveTeklaFilterPath(
+        string filterName,
+        out string fullPath,
+        out string error)
+    {
+        fullPath = string.Empty;
+        error = string.Empty;
+
+        var candidates = new List<string>();
+        if (Path.IsPathRooted(filterName))
+        {
+            candidates.Add(filterName);
+            if (!Path.HasExtension(filterName))
+            {
+                candidates.Add(filterName + TeklaViewFilterExtension);
+            }
+        }
+        else
+        {
+            var modelPath = LazyModelConnector.ModelInstance?.GetInfo()?.ModelPath;
+            if (string.IsNullOrWhiteSpace(modelPath))
+            {
+                error = "model path unavailable";
+                return false;
+            }
+
+            var attributesPath = Path.Combine(modelPath, "attributes");
+            candidates.Add(Path.Combine(attributesPath, filterName));
+            if (!Path.HasExtension(filterName))
+            {
+                candidates.Add(Path.Combine(attributesPath, filterName + TeklaViewFilterExtension));
+            }
+        }
+
+        foreach (var candidate in candidates
+                     .Where(c => !string.IsNullOrWhiteSpace(c))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (File.Exists(candidate))
+            {
+                fullPath = candidate;
+                return true;
+            }
+        }
+
+        error = "file not found";
+        return false;
     }
 
     private static bool TryBuildLegacyExpression(
@@ -737,6 +872,18 @@ internal sealed class PhaseFilterExpressionBuilder
             .ToList();
     }
 
+    private static bool IsTruthy(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return false;
+        }
+
+        return string.Equals(normalized, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(normalized, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static IReadOnlyList<PhaseSelectionCriteria> NormalizeSelection(
         IReadOnlyCollection<PhaseSelectionCriteria>? selection,
         IList<string> diagnostics)
@@ -760,11 +907,12 @@ internal sealed class PhaseFilterExpressionBuilder
                 var attributeFilters = g
                     .SelectMany(x => x.AttributeFilters ?? Enumerable.Empty<PhaseAttributeFilter>())
                     .Where(x => x != null
-                        && !string.IsNullOrWhiteSpace(x.TargetAttribute)
+                        && (!string.IsNullOrWhiteSpace(x.TargetAttribute)
+                            || !string.IsNullOrWhiteSpace(x.TeklaFilterName))
                         && !string.IsNullOrWhiteSpace(x.Value))
                     .GroupBy(
                         x => FormattableString.Invariant(
-                            $"{x.TargetObjectType}:{x.TargetAttribute}:{x.BooleanMode}:{x.ValueType}:{x.Value}:{BuildApplyRuleSignature(x.ApplyRule)}"),
+                            $"{x.TargetObjectType}:{x.TargetAttribute}:{x.TeklaFilterName}:{x.BooleanMode}:{x.ValueType}:{x.Value}:{BuildApplyRuleSignature(x.ApplyRule)}"),
                         StringComparer.OrdinalIgnoreCase)
                     .Select(x => x.First())
                     .ToList();

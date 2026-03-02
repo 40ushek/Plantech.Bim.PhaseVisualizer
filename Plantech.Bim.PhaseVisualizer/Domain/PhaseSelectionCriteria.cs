@@ -7,6 +7,7 @@ internal sealed class PhaseAttributeFilter
 {
     public PhaseColumnObjectType? TargetObjectType { get; set; }
     public string TargetAttribute { get; set; } = string.Empty;
+    public string TeklaFilterName { get; set; } = string.Empty;
     public string BooleanMode { get; set; } = string.Empty;
     public PhaseApplyRuleConfig? ApplyRule { get; set; }
     public PhaseValueType ValueType { get; set; } = PhaseValueType.String;

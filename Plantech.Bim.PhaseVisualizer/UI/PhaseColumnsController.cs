@@ -22,6 +22,7 @@ internal sealed class PhaseColumnsController
                 Label = string.IsNullOrWhiteSpace(c.Label) ? c.Key : c.Label,
                 TargetObjectType = c.TargetObjectType,
                 TargetAttribute = c.TargetAttribute ?? string.Empty,
+                TeklaFilterName = c.TeklaFilterName ?? string.Empty,
                 BooleanMode = c.BooleanMode ?? string.Empty,
                 ApplyRule = c.ApplyRule,
                 Aggregate = c.Aggregate,

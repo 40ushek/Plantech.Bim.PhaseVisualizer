@@ -77,7 +77,8 @@ internal static class PhaseSelectionBuilder
         var result = new List<PhaseAttributeFilter>();
         foreach (var column in columns.Where(c => c.IsEditable))
         {
-            if (string.IsNullOrWhiteSpace(column.TargetAttribute)
+            if ((string.IsNullOrWhiteSpace(column.TargetAttribute)
+                 && string.IsNullOrWhiteSpace(column.TeklaFilterName))
                 || !table.Columns.Contains(column.Key))
             {
                 continue;
@@ -92,6 +93,7 @@ internal static class PhaseSelectionBuilder
             {
                 TargetObjectType = column.TargetObjectType,
                 TargetAttribute = column.TargetAttribute,
+                TeklaFilterName = column.TeklaFilterName,
                 BooleanMode = column.BooleanMode,
                 ApplyRule = column.ApplyRule,
                 ValueType = column.Type,

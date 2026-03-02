@@ -14,6 +14,7 @@ internal sealed class PhaseColumnConfig
     public string Attribute { get; set; } = string.Empty;
     public PhaseColumnObjectType? TargetObjectType { get; set; }
     public string TargetAttribute { get; set; } = string.Empty;
+    public string TeklaFilterName { get; set; } = string.Empty;
     public string BooleanMode { get; set; } = string.Empty;
     public PhaseApplyRuleConfig? ApplyRule { get; set; }
     public PhaseAggregateType Aggregate { get; set; } = PhaseAggregateType.First;

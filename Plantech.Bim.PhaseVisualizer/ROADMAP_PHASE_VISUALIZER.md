@@ -1,6 +1,6 @@
 # ROADMAP: Phase Visualizer
 
-## Current State (2026-02-26)
+## Current State (2026-03-02)
 
 Implemented:
 - Dynamic WPF phase table from JSON config.
@@ -26,6 +26,10 @@ Implemented:
 - Apply criteria collection extracted from ViewModel into `UI/PhaseSelectionBuilder.cs`.
 - Config-driven `applyRule` conditions introduced for editable columns (with legacy compatibility mapping).
   Detailed rollout/status is tracked in `ROADMAP_APPLY_RULES.md`.
+- Config-driven Tekla filter reference for editable boolean columns:
+  - `teklaFilterName` is supported in column schema.
+  - referenced `.SObjGrp` filter expression is loaded and merged with generated criteria using `AND`.
+  - unresolved/invalid file is logged as warning and ignored (fail-safe).
 - Namespace simplified to `Plantech.Bim.PhaseVisualizer.*`.
 - `Bolt` object type supported: display columns (`objectType: Bolt`) and editable filter columns (`targetObjectType: Bolt`).
   `BoltGroup` objects collected alongside `Part` in the attribute scan; report properties read via `GetReportProperty`.
@@ -46,6 +50,7 @@ Current editable schema:
 - `editable: true`
 - For model-targeted filters: `targetObjectType + targetAttribute`
 - For built-in criteria flags: `targetAttribute` only (for example `exclude_gratings`, `exclude_existing`).
+- For Tekla file filters: `teklaFilterName` (boolean toggle column, AND-combined in apply pipeline).
 
 Supported `objectType` / `targetObjectType` values:
 
@@ -132,6 +137,19 @@ Done:
 - `PhaseTableConfigValidator`: `Bolt` allowed as `targetObjectType` for editable filter columns (alongside `Part` and `Assembly`).
 - Bug fix: `TryResolveTemplateStringField` was lowercasing `targetAttribute` before passing to `PhaseSourceResolver`, breaking Assembly and Bolt template field names. Removed the unnecessary `ToLowerInvariant()`; normalization is handled inside `PhaseSourceResolver` per object type.
 
+### M17 - Tekla Filter Reference Columns
+Status: DONE
+
+Done:
+- `teklaFilterName` added to column config/presentation/selection pipeline.
+- Validator normalization added:
+  - accepted only for editable boolean columns,
+  - unsupported usage is ignored with warning.
+- `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines with generated criteria using `AND`.
+- Fail-safe behavior:
+  - missing/unresolvable/invalid Tekla filter is logged and skipped,
+  - apply flow continues without crash.
+
 ### M15 - ApplyRule Config-Driven Conditions
 Status: DONE
 
@@ -147,6 +165,7 @@ Done:
 - `Apply` requires an active view or at least one visible view in Tekla; otherwise apply returns `false`.
 - Attribute scan path for model columns currently uses visible views (`GetVisibleViews` + `GetObjectsByBoundingBox` fallback to active view), so some table values can still be view-dependent.
 - In Tekla version mismatch scenarios (for example plugin built with TS2021 API and loaded in TS2025), active-view access can fail at runtime; this is now visible in logs via structured apply failure details.
+- Some template/system filters (for example certain `standard.SObjGrp` variants with empty template operands) may fail to parse via `Filter(fullFileName, ...)`; such filters are currently logged and ignored in composed apply expression.
 
 Note:
 - Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
