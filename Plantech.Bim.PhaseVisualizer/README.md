@@ -12,17 +12,25 @@ Tekla phase visualization tool with config-driven columns and Tekla-native view 
 Config file name: `phase-visualizer.json`
 
 Load order:
-1. `<ModelPath>/.plantech/phase-visualizer.json`
-2. `<ExtensionRoot>/.plantech/phase-visualizer.json`
-3. embedded defaults
+1. Model root:
+   - `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
+   - `<ModelPath>/.plantech/phase-visualizer.json`
+2. Firm root (`XS_FIRM`):
+   - `<XS_FIRM>/PT_PhaseVisualizer/phase-visualizer.json`
+   - `<XS_FIRM>/.plantech/phase-visualizer.json`
+3. Application base:
+   - `<ApplicationBase>/PT_PhaseVisualizer/phase-visualizer.json`
+   - `<ApplicationBase>/.plantech/phase-visualizer.json`
+4. embedded defaults
 
 ## Logging
 
 - Log file name: `phase-visualizer.log`
 - Log directory resolution order:
-1. `<ModelPath>/.plantech`
-2. `<ExtensionRoot>/.plantech`
-3. `%LOCALAPPDATA%/Plantech/PhaseVisualizer`
+1. `<ModelPath>/PT_PhaseVisualizer` (fallback: `<ModelPath>/.plantech`)
+2. `<XS_FIRM>/PT_PhaseVisualizer` (fallback: `<XS_FIRM>/.plantech`)
+3. `<ApplicationBase>/PT_PhaseVisualizer` (fallback: `<ApplicationBase>/.plantech`)
+4. `%LOCALAPPDATA%/Plantech/PhaseVisualizer`
 
 ## Column Model
 
@@ -157,6 +165,25 @@ Notes:
 - `field` is optional in rule clauses. If omitted, `targetAttribute` is used.
 - If clause `value` is omitted, user input from the cell is used.
 - Supported ops: `eq`, `neq`, `in`, `contains`, `notContains`, `startsWith`, `notStartsWith`, `endsWith`, `notEndsWith`, `gt`, `gte`, `lt`, `lte`.
+
+### Tekla file filter column (`teklaFilterName`)
+
+You can attach an existing Tekla object group filter (`.SObjGrp`) to a boolean editable column:
+
+```json
+{
+  "key": "standard_filter",
+  "label": "Standard",
+  "type": "Boolean",
+  "editable": true,
+  "teklaFilterName": "standard.SObjGrp"
+}
+```
+
+Behavior:
+- `teklaFilterName` is merged with generated phase/attribute criteria using `AND`.
+- Missing or invalid filter file is logged as warning and skipped (fail-safe).
+- Existing generated criteria still apply even if file filter is skipped.
 
 ## Apply Behavior
 

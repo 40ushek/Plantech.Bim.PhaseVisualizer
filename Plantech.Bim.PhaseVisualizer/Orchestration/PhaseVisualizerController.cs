@@ -13,7 +13,6 @@ namespace Plantech.Bim.PhaseVisualizer.Orchestration;
 
 internal sealed class PhaseVisualizerController
 {
-    private const string ConfigDirectoryName = ".plantech";
     private const string StateFileName = "phase-visualizer.state.json";
 
     private readonly PhaseTableConfigLoader _configProvider;
@@ -231,7 +230,7 @@ internal sealed class PhaseVisualizerController
             return string.Empty;
         }
 
-        return Path.Combine(modelPath, ConfigDirectoryName);
+        return Path.Combine(modelPath, PhaseConfigPaths.ConfigDirectoryName);
     }
 
     private static string BuildStateFilePath(string modelPath)
@@ -279,7 +278,7 @@ internal sealed class PhaseVisualizerController
     {
         modelPath = string.Empty;
         var leaf = Path.GetFileName(normalizedConfigDirectory);
-        if (!leaf.Equals(ConfigDirectoryName, StringComparison.OrdinalIgnoreCase))
+        if (!PhaseConfigPaths.IsConfigDirectoryName(leaf))
         {
             return false;
         }

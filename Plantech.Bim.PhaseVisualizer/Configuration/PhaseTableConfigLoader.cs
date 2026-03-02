@@ -2,16 +2,14 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
+using Tekla.Structures;
 
 namespace Plantech.Bim.PhaseVisualizer.Configuration;
 
 internal sealed class PhaseTableConfigLoader
 {
-    internal const string ConfigDirectoryName = ".plantech";
-    internal const string ConfigFileName = "phase-visualizer.json";
-
     private static readonly JsonSerializerSettings JsonSettings = new()
     {
         MissingMemberHandling = MissingMemberHandling.Ignore,
@@ -33,14 +31,12 @@ internal sealed class PhaseTableConfigLoader
 
     public PhaseTableConfig Load(string modelConfigDirectory, ILogger? log = null)
     {
-        if (TryLoadConfig(BuildModelConfigPath(modelConfigDirectory), "model", out var config, log))
+        foreach (var candidate in EnumerateConfigCandidates(modelConfigDirectory))
         {
-            return _validator.Validate(config, log);
-        }
-
-        if (TryLoadConfig(GetExtensionConfigPath(), "extension", out config, log))
-        {
-            return _validator.Validate(config, log);
+            if (TryLoadConfig(candidate.FilePath, candidate.SourceName, out var config, log))
+            {
+                return _validator.Validate(config, log);
+            }
         }
 
         log?.Warning("PhaseVisualizer config not found. Using embedded defaults.");
@@ -49,53 +45,169 @@ internal sealed class PhaseTableConfigLoader
 
     public string ResolveEffectiveConfigDirectory(string modelConfigDirectory)
     {
-        var modelConfigPath = BuildModelConfigPath(modelConfigDirectory);
-        if (!string.IsNullOrWhiteSpace(modelConfigPath) && File.Exists(modelConfigPath))
+        foreach (var candidate in EnumerateConfigCandidates(modelConfigDirectory))
         {
-            return Path.GetDirectoryName(modelConfigPath) ?? string.Empty;
+            if (File.Exists(candidate.FilePath))
+            {
+                return Path.GetDirectoryName(candidate.FilePath) ?? string.Empty;
+            }
         }
 
-        var extensionConfigPath = GetExtensionConfigPath();
-        if (!string.IsNullOrWhiteSpace(extensionConfigPath) && File.Exists(extensionConfigPath))
+        var preferredModelConfigDirectory = ResolvePreferredConfigDirectoryFromRootOrConfigDirectory(modelConfigDirectory);
+        if (!string.IsNullOrWhiteSpace(preferredModelConfigDirectory))
         {
-            return Path.GetDirectoryName(extensionConfigPath) ?? string.Empty;
+            return preferredModelConfigDirectory!;
         }
 
-        if (!string.IsNullOrWhiteSpace(modelConfigDirectory))
+        var preferredCompanyConfigDirectory = ResolvePreferredConfigDirectoryFromRootOrConfigDirectory(GetCompanyRootDirectory());
+        if (!string.IsNullOrWhiteSpace(preferredCompanyConfigDirectory))
         {
-            return modelConfigDirectory;
+            return preferredCompanyConfigDirectory!;
         }
 
-        return !string.IsNullOrWhiteSpace(extensionConfigPath)
-            ? Path.GetDirectoryName(extensionConfigPath) ?? string.Empty
-            : string.Empty;
+        var preferredApplicationConfigDirectory = ResolvePreferredConfigDirectoryFromRootOrConfigDirectory(GetApplicationRootDirectory());
+        return preferredApplicationConfigDirectory ?? string.Empty;
     }
 
-    private static string? BuildModelConfigPath(string modelConfigDirectory)
+    private static IEnumerable<string> BuildModelConfigPaths(string modelConfigDirectory)
     {
-        if (string.IsNullOrWhiteSpace(modelConfigDirectory))
-        {
-            return null;
-        }
-
-        return Path.Combine(modelConfigDirectory, ConfigFileName);
+        return BuildConfigFilePathsFromRootOrConfigDirectory(modelConfigDirectory);
     }
 
-    private static string? GetExtensionConfigPath()
+    private static IEnumerable<string> GetCompanyConfigPaths()
     {
-        var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-        if (string.IsNullOrWhiteSpace(assemblyLocation))
+        return BuildConfigFilePathsFromRootOrConfigDirectory(GetCompanyRootDirectory());
+    }
+
+    private static IEnumerable<string> GetApplicationConfigPaths()
+    {
+        return BuildConfigFilePathsFromRootOrConfigDirectory(GetApplicationRootDirectory());
+    }
+
+    private static string? GetCompanyRootDirectory()
+    {
+        try
+        {
+            var rawFirmPath = string.Empty;
+            TeklaStructuresSettings.GetAdvancedOption("XS_FIRM", ref rawFirmPath);
+            if (string.IsNullOrWhiteSpace(rawFirmPath))
+            {
+                return null;
+            }
+
+            foreach (var firmPathToken in rawFirmPath.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var firmPath = firmPathToken.Trim().Trim('"');
+                if (string.IsNullOrWhiteSpace(firmPath))
+                {
+                    continue;
+                }
+
+                return firmPath;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? GetApplicationRootDirectory()
+    {
+        var applicationBaseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        if (string.IsNullOrWhiteSpace(applicationBaseDirectory))
         {
             return null;
         }
 
-        var extensionRoot = Path.GetDirectoryName(assemblyLocation);
-        if (string.IsNullOrWhiteSpace(extensionRoot))
+        return applicationBaseDirectory;
+    }
+
+    private static IEnumerable<(string FilePath, string SourceName)> EnumerateConfigCandidates(string modelConfigDirectory)
+    {
+        var candidates = new (IEnumerable<string> FilePaths, string SourceName)[]
+        {
+            (BuildModelConfigPaths(modelConfigDirectory), "model"),
+            (GetCompanyConfigPaths(), "firm"),
+            (GetApplicationConfigPaths(), "application"),
+        };
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var candidate in candidates)
+        {
+            foreach (var filePath in candidate.FilePaths)
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                {
+                    continue;
+                }
+
+                var normalizedCandidatePath = NormalizePath(filePath);
+                if (!seen.Add(normalizedCandidatePath))
+                {
+                    continue;
+                }
+
+                yield return (filePath, candidate.SourceName);
+            }
+        }
+    }
+
+    private static IEnumerable<string> BuildConfigFilePathsFromRootOrConfigDirectory(string? rootOrConfigDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(rootOrConfigDirectory))
+        {
+            yield break;
+        }
+
+        var normalizedPath = NormalizePath(rootOrConfigDirectory);
+        var rootDirectory = ResolveRootDirectoryFromRootOrConfigDirectory(normalizedPath);
+        foreach (var configPath in PhaseConfigPaths.BuildConfigFilePathsFromRootDirectory(rootDirectory))
+        {
+            yield return configPath;
+        }
+    }
+
+    private static string? ResolvePreferredConfigDirectoryFromRootOrConfigDirectory(string? rootOrConfigDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(rootOrConfigDirectory))
         {
             return null;
         }
 
-        return Path.Combine(extensionRoot, ConfigDirectoryName, ConfigFileName);
+        var normalizedPath = NormalizePath(rootOrConfigDirectory);
+        var rootDirectory = ResolveRootDirectoryFromRootOrConfigDirectory(normalizedPath);
+        return PhaseConfigPaths.BuildPreferredConfigDirectoryPathFromRootDirectory(rootDirectory);
+    }
+
+    private static string ResolveRootDirectoryFromRootOrConfigDirectory(string normalizedPath)
+    {
+        var leafDirectory = Path.GetFileName(normalizedPath);
+        if (PhaseConfigPaths.IsConfigDirectoryName(leafDirectory))
+        {
+            return Path.GetFullPath(Path.Combine(normalizedPath, ".."));
+        }
+
+        return normalizedPath;
+    }
+
+    private static string NormalizePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return Path.GetFullPath(path);
+        }
+        catch
+        {
+            return path ?? string.Empty;
+        }
     }
 
     private static bool TryLoadConfig(
