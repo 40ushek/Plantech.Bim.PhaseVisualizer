@@ -147,6 +147,11 @@ Done:
   - accepted only for editable boolean columns,
   - unsupported usage is ignored with warning.
 - `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines with generated criteria using `AND`.
+- Filter reference resolution:
+  - absolute file path, or
+  - relative name under `<ModelPath>/attributes`,
+  - `.SObjGrp` extension is auto-appended when omitted.
+- File filter branch is applied only for truthy boolean value in that editable column.
 - Fail-safe behavior:
   - missing/unresolvable/invalid Tekla filter is logged and skipped,
   - apply flow continues without crash.

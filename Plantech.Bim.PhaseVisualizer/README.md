@@ -181,7 +181,10 @@ You can attach an existing Tekla object group filter (`.SObjGrp`) to a boolean e
 ```
 
 Behavior:
+- The file-filter branch is applied only when the column value is `true`.
 - `teklaFilterName` is merged with generated phase/attribute criteria using `AND`.
+- `teklaFilterName` can be absolute path, or a name relative to `<ModelPath>/attributes`.
+- If extension is omitted, `.SObjGrp` is tried automatically.
 - Missing or invalid filter file is logged as warning and skipped (fail-safe).
 - Existing generated criteria still apply even if file filter is skipped.
 
