@@ -7,7 +7,9 @@ using Serilog;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
+using Tekla.Structures;
 
 namespace Plantech.Bim.PhaseVisualizer.Orchestration;
 
@@ -19,6 +21,8 @@ internal sealed class PhaseVisualizerController
     private readonly TeklaPhaseDataProvider _dataProvider;
     private readonly PhaseTableBuilder _tableBuilder;
     private readonly IPhaseActionExecutor _actionExecutor;
+    private readonly object _pathDiagnosticsSync = new();
+    private bool _pathDiagnosticsLogged;
 
     public PhaseVisualizerController()
         : this(
@@ -52,6 +56,12 @@ internal sealed class PhaseVisualizerController
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
         return _configProvider.ResolveEffectiveConfigDirectory(contextPaths.ModelConfigDirectory);
+    }
+
+    public void LogStartupDiagnostics(SynchronizationContext? teklaContext, ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
+        LogPathDiagnosticsOnce(contextPaths, log);
     }
 
     public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
@@ -147,6 +157,8 @@ internal sealed class PhaseVisualizerController
         bool showObjectCountInStatus,
         ILogger? log = null)
     {
+        LogPathDiagnosticsOnce(contextPaths, log);
+
         var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
         var includePhaseObjectCounts = ShouldIncludePhaseObjectCounts(
             config,
@@ -186,6 +198,121 @@ internal sealed class PhaseVisualizerController
         bool showObjectCountInStatus)
     {
         return showObjectCountInStatus;
+    }
+
+    private void LogPathDiagnosticsOnce(ContextPaths contextPaths, ILogger? log)
+    {
+        if (log == null)
+        {
+            return;
+        }
+
+        lock (_pathDiagnosticsSync)
+        {
+            if (_pathDiagnosticsLogged)
+            {
+                return;
+            }
+
+            _pathDiagnosticsLogged = true;
+        }
+
+        var modelPath = ResolveModelPathFromConfigDirectory(contextPaths.ModelConfigDirectory);
+        var firmPath = ResolveFirmPath();
+        var environmentPath = ResolveEnvironmentPath();
+        var configResolution = _configProvider.ResolveConfigResolution(contextPaths.ModelConfigDirectory);
+        var effectiveConfigPath = string.IsNullOrWhiteSpace(configResolution.EffectiveConfigPath)
+            ? "<embedded-defaults>"
+            : configResolution.EffectiveConfigPath;
+
+        log.Information("PhaseVisualizer startup diagnostics:");
+        log.Information("  Model={ModelPath}", FormatPathForLog(modelPath));
+        log.Information("  Firm={FirmPath}", FormatPathForLog(firmPath));
+        log.Information("  Environment={EnvironmentPath}", FormatPathForLog(environmentPath));
+        log.Information("  ConfigFile={ConfigFileName}", configResolution.ConfigFileName);
+        log.Information("  ConfigPath={ConfigPath}", effectiveConfigPath);
+        log.Information("  ConfigSource={ConfigSource}", configResolution.SourceName);
+
+        if (configResolution.ProbePaths.Count == 0)
+        {
+            log.Information("  ConfigProbePath=<none>");
+            return;
+        }
+
+        for (var i = 0; i < configResolution.ProbePaths.Count; i++)
+        {
+            log.Information(
+                "  ConfigProbePath[{Index}]={ProbePath}",
+                i + 1,
+                configResolution.ProbePaths[i]);
+        }
+    }
+
+    private static string ResolveFirmPath()
+    {
+        try
+        {
+            var raw = string.Empty;
+            TeklaStructuresSettings.GetAdvancedOption("XS_FIRM", ref raw);
+            return ResolveFirstPathToken(raw);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string ResolveEnvironmentPath()
+    {
+        try
+        {
+            var raw = string.Empty;
+            TeklaStructuresSettings.GetAdvancedOption("XS_SYSTEM", ref raw);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return string.Empty;
+            }
+
+            var normalized = Regex.Replace(raw, @"[\\/]+", "\\");
+            var match = Regex.Match(
+                normalized,
+                @"(.*?\\environments\\[^\\;]+)",
+                RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Groups[1].Value.Trim().TrimEnd('\\');
+            }
+
+            return ResolveFirstPathToken(raw);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string ResolveFirstPathToken(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        foreach (var token in raw.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var path = token.Trim().Trim('"');
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                return path;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string FormatPathForLog(string? path)
+    {
+        return string.IsNullOrWhiteSpace(path) ? "<empty>" : path!;
     }
 
     private static ContextPaths ResolveContextPathsFromTekla(SynchronizationContext? teklaContext, ILogger? log = null)

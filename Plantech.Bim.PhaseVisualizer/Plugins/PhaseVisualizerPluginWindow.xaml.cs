@@ -35,7 +35,11 @@ public partial class PhaseVisualizerWindow : PluginWindowBase
     {
         var controller = new PhaseVisualizerController();
         var logDirectory = controller.ResolveEffectiveConfigDirectory(SynchronizationContext.Current);
-        var log = PhaseVisualizerLogConfigurator.Configure(typeof(PhaseVisualizerWindow), logDirectory);
+        var log = PhaseVisualizerLogConfigurator.Configure(
+            typeof(PhaseVisualizerWindow),
+            logDirectory,
+            resetLogFile: true);
+        controller.LogStartupDiagnostics(SynchronizationContext.Current, log);
         return new UI.PhaseVisualizerViewModel(controller, SynchronizationContext.Current, log);
     }
 }

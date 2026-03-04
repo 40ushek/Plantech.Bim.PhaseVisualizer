@@ -14,22 +14,27 @@ Config file name: `phase-visualizer.json`
 Load order:
 1. Model root:
    - `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
-   - `<ModelPath>/.plantech/phase-visualizer.json`
 2. Firm root (`XS_FIRM`):
    - `<XS_FIRM>/PT_PhaseVisualizer/phase-visualizer.json`
-   - `<XS_FIRM>/.plantech/phase-visualizer.json`
 3. Application base:
    - `<ApplicationBase>/PT_PhaseVisualizer/phase-visualizer.json`
-   - `<ApplicationBase>/.plantech/phase-visualizer.json`
 4. embedded defaults
+
+If no config file exists in any lookup path, a default config is auto-created at:
+- `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
 
 ## Logging
 
 - Log file name: `phase-visualizer.log`
+- Log file is reset on each new window open (host and plugin).
+- Startup diagnostics log includes:
+  - `Model`, `Firm`, `Environment`
+  - `ConfigFile`, `ConfigPath`, `ConfigSource`
+  - `ConfigProbePaths` (full candidate chain used for lookup)
 - Log directory resolution order:
-1. `<ModelPath>/PT_PhaseVisualizer` (fallback: `<ModelPath>/.plantech`)
-2. `<XS_FIRM>/PT_PhaseVisualizer` (fallback: `<XS_FIRM>/.plantech`)
-3. `<ApplicationBase>/PT_PhaseVisualizer` (fallback: `<ApplicationBase>/.plantech`)
+1. `<ModelPath>/PT_PhaseVisualizer`
+2. `<XS_FIRM>/PT_PhaseVisualizer`
+3. `<ApplicationBase>/PT_PhaseVisualizer`
 4. `%LOCALAPPDATA%/Plantech/PhaseVisualizer`
 
 ## Column Model

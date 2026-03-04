@@ -31,16 +31,57 @@ internal sealed class PhaseTableConfigLoader
 
     public PhaseTableConfig Load(string modelConfigDirectory, ILogger? log = null)
     {
+        var foundAnyConfigFile = false;
         foreach (var candidate in EnumerateConfigCandidates(modelConfigDirectory))
         {
+            if (File.Exists(candidate.FilePath))
+            {
+                foundAnyConfigFile = true;
+            }
+
             if (TryLoadConfig(candidate.FilePath, candidate.SourceName, out var config, log))
             {
                 return _validator.Validate(config, log);
             }
         }
 
-        log?.Warning("PhaseVisualizer config not found. Using embedded defaults.");
-        return _validator.Validate(PhaseTableConfigDefaults.Create(), log);
+        var defaults = PhaseTableConfigDefaults.Create();
+        if (!foundAnyConfigFile
+            && TryCreateModelDefaultConfig(modelConfigDirectory, defaults, out var createdConfigPath, log))
+        {
+            log?.Information(
+                "PhaseVisualizer config not found. Created default config at {Path}.",
+                createdConfigPath);
+        }
+        else
+        {
+            log?.Warning("PhaseVisualizer config not found. Using embedded defaults.");
+        }
+
+        return _validator.Validate(defaults, log);
+    }
+
+    public ConfigResolutionInfo ResolveConfigResolution(string modelConfigDirectory)
+    {
+        var probePaths = new List<string>();
+        foreach (var candidate in EnumerateConfigCandidates(modelConfigDirectory))
+        {
+            probePaths.Add(candidate.FilePath);
+            if (File.Exists(candidate.FilePath))
+            {
+                return new ConfigResolutionInfo(
+                    candidate.FilePath,
+                    candidate.SourceName,
+                    probePaths,
+                    PhaseConfigPaths.ConfigFileName);
+            }
+        }
+
+        return new ConfigResolutionInfo(
+            string.Empty,
+            "embedded-defaults",
+            probePaths,
+            PhaseConfigPaths.ConfigFileName);
     }
 
     public string ResolveEffectiveConfigDirectory(string modelConfigDirectory)
@@ -179,7 +220,7 @@ internal sealed class PhaseTableConfigLoader
 
         var normalizedPath = NormalizePath(rootOrConfigDirectory);
         var rootDirectory = ResolveRootDirectoryFromRootOrConfigDirectory(normalizedPath);
-        return PhaseConfigPaths.BuildPreferredConfigDirectoryPathFromRootDirectory(rootDirectory);
+        return PhaseConfigPaths.BuildConfigDirectoryPathFromRootDirectory(rootDirectory);
     }
 
     private static string ResolveRootDirectoryFromRootOrConfigDirectory(string normalizedPath)
@@ -257,6 +298,79 @@ internal sealed class PhaseTableConfigLoader
                 filePath);
             return false;
         }
+    }
+
+    private static bool TryCreateModelDefaultConfig(
+        string modelConfigDirectory,
+        PhaseTableConfig defaults,
+        out string createdConfigPath,
+        ILogger? log)
+    {
+        createdConfigPath = string.Empty;
+
+        if (defaults == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(modelConfigDirectory))
+            {
+                return false;
+            }
+
+            var normalizedPath = NormalizePath(modelConfigDirectory);
+            var modelRootDirectory = ResolveRootDirectoryFromRootOrConfigDirectory(normalizedPath);
+            if (string.IsNullOrWhiteSpace(modelRootDirectory) || !Directory.Exists(modelRootDirectory))
+            {
+                return false;
+            }
+
+            var configDirectory = PhaseConfigPaths.BuildConfigDirectoryPathFromRootDirectory(modelRootDirectory);
+            if (string.IsNullOrWhiteSpace(configDirectory))
+            {
+                return false;
+            }
+
+            Directory.CreateDirectory(configDirectory);
+
+            createdConfigPath = Path.Combine(configDirectory, PhaseConfigPaths.ConfigFileName);
+            if (File.Exists(createdConfigPath))
+            {
+                return true;
+            }
+
+            var json = JsonConvert.SerializeObject(defaults, Formatting.Indented, JsonSettings);
+            File.WriteAllText(createdConfigPath, json);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log?.Warning(ex, "PhaseVisualizer failed to create default model config.");
+            createdConfigPath = string.Empty;
+            return false;
+        }
+    }
+
+    public readonly struct ConfigResolutionInfo
+    {
+        public ConfigResolutionInfo(
+            string effectiveConfigPath,
+            string sourceName,
+            IReadOnlyList<string> probePaths,
+            string configFileName)
+        {
+            EffectiveConfigPath = effectiveConfigPath ?? string.Empty;
+            SourceName = sourceName ?? string.Empty;
+            ProbePaths = probePaths ?? Array.Empty<string>();
+            ConfigFileName = configFileName ?? string.Empty;
+        }
+
+        public string EffectiveConfigPath { get; }
+        public string SourceName { get; }
+        public IReadOnlyList<string> ProbePaths { get; }
+        public string ConfigFileName { get; }
     }
 }
 

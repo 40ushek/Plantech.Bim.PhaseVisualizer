@@ -25,7 +25,11 @@ public static class PhaseVisualizerLauncher
     {
         var controller = new PhaseVisualizerController();
         var logDirectory = controller.ResolveEffectiveConfigDirectory(teklaContext);
-        var log = PhaseVisualizerLogConfigurator.Configure(typeof(PhaseVisualizerLauncher), logDirectory);
+        var log = PhaseVisualizerLogConfigurator.Configure(
+            typeof(PhaseVisualizerLauncher),
+            logDirectory,
+            resetLogFile: true);
+        controller.LogStartupDiagnostics(teklaContext, log);
         Application? app = null;
         var ownsApplication = false;
 

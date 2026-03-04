@@ -17,11 +17,11 @@ Implemented:
 - ViewModel keeps cached full-phase context; `Show All Phases` switch does not force repeated heavy model reads each toggle.
 - State and presets persisted in `<ModelPath>/attributes/phase-visualizer.state.json`.
 - Config search path migrated to:
-  1. Model root: `PT_PhaseVisualizer` then `.plantech`
-  2. Firm root (`XS_FIRM`): `PT_PhaseVisualizer` then `.plantech`
-  3. Application base: `PT_PhaseVisualizer` then `.plantech`
+  1. Model root: `PT_PhaseVisualizer`
+  2. Firm root (`XS_FIRM`): `PT_PhaseVisualizer`
+  3. Application base: `PT_PhaseVisualizer`
   4. embedded defaults.
-- Logging configured to `phase-visualizer.log` in effective config directory (`PT_PhaseVisualizer` preferred, `.plantech` fallback) via `PhaseVisualizerLogConfigurator`.
+- Logging configured to `phase-visualizer.log` in effective config directory (`PT_PhaseVisualizer`) via `PhaseVisualizerLogConfigurator`.
 - Apply diagnostics are available both in UI status and logs.
 - Apply now returns structured result with failure reason/details (`PhaseApplyResult`), and UI status is mapped from explicit failure reason.
 - Apply criteria collection extracted from ViewModel into `UI/PhaseSelectionBuilder.cs`.
@@ -82,7 +82,7 @@ Status: DONE
 Done:
 - Legacy semantic sources rejected by validator for model columns.
 - Resolver uses explicit object/attribute mapping.
-- Config directories unified with priority `PT_PhaseVisualizer` -> `.plantech` for model / firm (`XS_FIRM`) / application roots.
+- Config directories unified to `PT_PhaseVisualizer` for model / firm (`XS_FIRM`) / application roots.
 
 ### M6 - Hardening and Test Coverage
 Status: TODO

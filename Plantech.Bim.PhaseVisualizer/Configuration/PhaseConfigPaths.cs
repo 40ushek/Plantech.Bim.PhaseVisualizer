@@ -5,16 +5,8 @@ namespace Plantech.Bim.PhaseVisualizer.Configuration;
 
 internal static class PhaseConfigPaths
 {
-    internal const string PreferredConfigDirectoryName = "PT_PhaseVisualizer";
-    internal const string LegacyConfigDirectoryName = ".plantech";
-    internal const string ConfigDirectoryName = PreferredConfigDirectoryName;
+    internal const string ConfigDirectoryName = "PT_PhaseVisualizer";
     internal const string ConfigFileName = "phase-visualizer.json";
-
-    internal static IReadOnlyList<string> ConfigDirectorySearchOrder { get; } = new[]
-    {
-        PreferredConfigDirectoryName,
-        LegacyConfigDirectoryName,
-    };
 
     internal static string? BuildConfigFilePathFromConfigDirectory(string? configDirectory)
     {
@@ -33,20 +25,17 @@ internal static class PhaseConfigPaths
             yield break;
         }
 
-        foreach (var configDirectoryName in ConfigDirectorySearchOrder)
-        {
-            yield return Path.Combine(rootDirectory, configDirectoryName, ConfigFileName);
-        }
+        yield return Path.Combine(rootDirectory, ConfigDirectoryName, ConfigFileName);
     }
 
-    internal static string? BuildPreferredConfigDirectoryPathFromRootDirectory(string? rootDirectory)
+    internal static string? BuildConfigDirectoryPathFromRootDirectory(string? rootDirectory)
     {
         if (string.IsNullOrWhiteSpace(rootDirectory))
         {
             return null;
         }
 
-        return Path.Combine(rootDirectory, PreferredConfigDirectoryName);
+        return Path.Combine(rootDirectory, ConfigDirectoryName);
     }
 
     internal static bool IsConfigDirectoryName(string? value)
@@ -56,14 +45,6 @@ internal static class PhaseConfigPaths
             return false;
         }
 
-        foreach (var configDirectoryName in ConfigDirectorySearchOrder)
-        {
-            if (string.Equals(value, configDirectoryName, System.StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return string.Equals(value, ConfigDirectoryName, System.StringComparison.OrdinalIgnoreCase);
     }
 }
