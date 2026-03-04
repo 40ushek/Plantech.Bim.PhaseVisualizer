@@ -62,7 +62,7 @@ internal sealed class TeklaPhaseViewFilterApplier : IPhaseViewFilterApplier
             log?.Information("PhaseVisualizer filter expressions built. Count={Count}", filterExpressions.Count);
             foreach (var diagnostic in diagnostics)
             {
-                log?.Warning("PhaseVisualizer filter criteria: {Diagnostic}", diagnostic);
+                LogDiagnostic(log, diagnostic);
             }
 
             if (filterExpressions.Count == 0)
@@ -106,6 +106,31 @@ internal sealed class TeklaPhaseViewFilterApplier : IPhaseViewFilterApplier
                 PhaseApplyFailureReason.UnexpectedError,
                 ex.Message);
         }
+    }
+
+    private static void LogDiagnostic(ILogger? log, string diagnostic)
+    {
+        if (string.IsNullOrWhiteSpace(diagnostic))
+        {
+            return;
+        }
+
+        const string infoPrefix = "INFO:";
+        const string warnPrefix = "WARN:";
+
+        if (diagnostic.StartsWith(infoPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            log?.Information("PhaseVisualizer filter criteria: {Diagnostic}", diagnostic.Substring(infoPrefix.Length).Trim());
+            return;
+        }
+
+        if (diagnostic.StartsWith(warnPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            log?.Warning("PhaseVisualizer filter criteria: {Diagnostic}", diagnostic.Substring(warnPrefix.Length).Trim());
+            return;
+        }
+
+        log?.Warning("PhaseVisualizer filter criteria: {Diagnostic}", diagnostic);
     }
 
     private static string? GetFilterPathWithoutExtension(Model model)
@@ -209,4 +234,3 @@ internal sealed class TeklaPhaseViewFilterApplier : IPhaseViewFilterApplier
     }
 
 }
-

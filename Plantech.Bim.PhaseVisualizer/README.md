@@ -22,6 +22,7 @@ Load order:
 
 If no config file exists in any lookup path, a default config is auto-created at:
 - `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
+- Auto-created default config uses explicit `applyRule` mappings (no legacy `targetAttribute=exclude_*` flags).
 
 ## Logging
 
@@ -192,6 +193,10 @@ Behavior:
 - If extension is omitted, `.SObjGrp` is tried automatically.
 - Missing or invalid filter file is logged as warning and skipped (fail-safe).
 - Existing generated criteria still apply even if file filter is skipped.
+- Apply diagnostics now include:
+  - resolved file path for `teklaFilterName`,
+  - candidate paths checked when file is not found,
+  - explicit info when filter is skipped because toggle value is `false`.
 
 ## Apply Behavior
 

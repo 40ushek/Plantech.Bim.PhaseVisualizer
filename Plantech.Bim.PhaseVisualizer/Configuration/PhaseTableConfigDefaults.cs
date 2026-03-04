@@ -1,4 +1,5 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
+using Plantech.Bim.PhaseVisualizer.Rules;
 using System.Collections.Generic;
 
 namespace Plantech.Bim.PhaseVisualizer.Configuration;
@@ -58,7 +59,17 @@ internal static class PhaseTableConfigDefaults
                     Label = "Exclude Gratings",
                     Type = PhaseValueType.Boolean,
                     Editable = true,
-                    TargetAttribute = "exclude_gratings",
+                    TargetObjectType = PhaseColumnObjectType.Assembly,
+                    TargetAttribute = "ASSEMBLY.MAINPART.PROFILE",
+                    ApplyRule = new PhaseApplyRuleConfig
+                    {
+                        OnTrue = new ApplyRuleClauseConfig
+                        {
+                            Field = "ASSEMBLY.MAINPART.PROFILE",
+                            Op = "notStartsWith",
+                            Value = "GIRO",
+                        },
+                    },
                     Aggregate = PhaseAggregateType.First,
                     VisibleByDefault = true,
                     Order = 26,
@@ -70,7 +81,17 @@ internal static class PhaseTableConfigDefaults
                     Label = "Exclude Existing",
                     Type = PhaseValueType.Boolean,
                     Editable = true,
-                    TargetAttribute = "exclude_existing",
+                    TargetObjectType = PhaseColumnObjectType.Assembly,
+                    TargetAttribute = "PT_INFO_BESTAND",
+                    ApplyRule = new PhaseApplyRuleConfig
+                    {
+                        OnTrue = new ApplyRuleClauseConfig
+                        {
+                            Field = "PT_INFO_BESTAND",
+                            Op = "neq",
+                            Value = 1,
+                        },
+                    },
                     Aggregate = PhaseAggregateType.First,
                     VisibleByDefault = true,
                     Order = 27,

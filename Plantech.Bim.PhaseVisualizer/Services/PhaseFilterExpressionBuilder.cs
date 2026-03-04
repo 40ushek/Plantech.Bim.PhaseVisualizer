@@ -131,14 +131,27 @@ internal sealed class PhaseFilterExpressionBuilder
 
         if (!IsTruthy(attributeFilter.Value))
         {
+            diagnostics.Add($"INFO: Phase {phaseNumber}: teklaFilter '{filterName}' skipped because value is false.");
             return null;
         }
 
-        if (!TryResolveTeklaFilterPath(filterName, out var fullPath, out var resolveError))
+        if (!TryResolveTeklaFilterPath(
+                filterName,
+                out var fullPath,
+                out var sourceKind,
+                out var sourceFolder,
+                out var resolveError,
+                out var candidates,
+                out var probeFolders))
         {
-            diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' not resolved ({resolveError}), filter ignored.");
+            var probeFoldersText = probeFolders.Count == 0 ? "<none>" : string.Join(" | ", probeFolders);
+            diagnostics.Add(
+                $"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' not found (sourceKind={sourceKind}, reason={resolveError}), probed folders: {probeFoldersText}, candidates: {string.Join(" | ", candidates)}, filter ignored.");
             return null;
         }
+
+        diagnostics.Add(
+            $"INFO: Phase {phaseNumber}: teklaFilter '{filterName}' found (sourceKind={sourceKind}, folder='{sourceFolder}', path='{fullPath}').");
 
         try
         {
@@ -146,14 +159,14 @@ internal sealed class PhaseFilterExpressionBuilder
             var expression = filter.FilterExpression;
             if (expression == null)
             {
-                diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' has empty expression, filter ignored.");
+                diagnostics.Add($"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' has empty expression, filter ignored.");
             }
 
             return expression;
         }
         catch (Exception ex)
         {
-            diagnostics.Add($"Phase {phaseNumber}: teklaFilter '{filterName}' load failed ({ex.Message}), filter ignored.");
+            diagnostics.Add($"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' load failed ({ex.Message}), filter ignored.");
             return null;
         }
     }
@@ -161,18 +174,24 @@ internal sealed class PhaseFilterExpressionBuilder
     private static bool TryResolveTeklaFilterPath(
         string filterName,
         out string fullPath,
-        out string error)
+        out string sourceKind,
+        out string sourceFolder,
+        out string error,
+        out IReadOnlyList<string> candidates,
+        out IReadOnlyList<string> probeFolders)
     {
         fullPath = string.Empty;
+        sourceKind = Path.IsPathRooted(filterName) ? "absolute-path" : "model-attributes";
+        sourceFolder = string.Empty;
         error = string.Empty;
 
-        var candidates = new List<string>();
+        var candidatePaths = new List<string>();
         if (Path.IsPathRooted(filterName))
         {
-            candidates.Add(filterName);
+            candidatePaths.Add(filterName);
             if (!Path.HasExtension(filterName))
             {
-                candidates.Add(filterName + TeklaViewFilterExtension);
+                candidatePaths.Add(filterName + TeklaViewFilterExtension);
             }
         }
         else
@@ -181,24 +200,36 @@ internal sealed class PhaseFilterExpressionBuilder
             if (string.IsNullOrWhiteSpace(modelPath))
             {
                 error = "model path unavailable";
+                candidates = Array.Empty<string>();
+                probeFolders = Array.Empty<string>();
                 return false;
             }
 
             var attributesPath = Path.Combine(modelPath, "attributes");
-            candidates.Add(Path.Combine(attributesPath, filterName));
+            candidatePaths.Add(Path.Combine(attributesPath, filterName));
             if (!Path.HasExtension(filterName))
             {
-                candidates.Add(Path.Combine(attributesPath, filterName + TeklaViewFilterExtension));
+                candidatePaths.Add(Path.Combine(attributesPath, filterName + TeklaViewFilterExtension));
             }
         }
 
-        foreach (var candidate in candidates
+        var distinctCandidates = candidatePaths
                      .Where(c => !string.IsNullOrWhiteSpace(c))
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .ToList();
+        candidates = distinctCandidates;
+        probeFolders = distinctCandidates
+            .Select(Path.GetDirectoryName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var candidate in distinctCandidates)
         {
             if (File.Exists(candidate))
             {
                 fullPath = candidate;
+                sourceFolder = Path.GetDirectoryName(candidate) ?? string.Empty;
                 return true;
             }
         }
