@@ -10,7 +10,7 @@ Tekla Structures phase visualizer with config-driven columns and view filtering.
 The tool supports:
 - host window mode,
 - Tekla plugin window mode,
-- JSON-driven table/filters (`.plantech/phase-visualizer.json`),
+- JSON-driven table/filters (`PT_PhaseVisualizer/phase-visualizer.json`),
 - generated Tekla view filters (`PT_SubsystemSelection`).
 
 ## Quick Start
@@ -18,17 +18,27 @@ The tool supports:
 1. Build solution:
    - `dotnet build Plantech.Bim.sln -c Debug`
 2. Configure columns/filters:
-   - `Plantech.Bim.PhaseVisualizer.Host/bin/Debug/net48/.plantech/phase-visualizer.json`
+   - `Plantech.Bim.PhaseVisualizer.Host/bin/Debug/net48/PT_PhaseVisualizer/phase-visualizer.json`
 3. Run host mode for fast UI iteration, or load plugin in Tekla.
 
 ## Config and Logs
 
 - Config search order:
-  1. `<ModelPath>/.plantech/phase-visualizer.json`
-  2. `<ExtensionRoot>/.plantech/phase-visualizer.json`
-  3. embedded defaults
+  1. `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
+  2. `<XS_FIRM>/PT_PhaseVisualizer/phase-visualizer.json`
+  3. `<ApplicationBase>/PT_PhaseVisualizer/phase-visualizer.json`
+  4. embedded defaults
 - Log file:
-  - `phase-visualizer.log` in effective `.plantech` directory
+  - `phase-visualizer.log` in effective `PT_PhaseVisualizer` directory
+
+- `teklaFilterName` lookup for relative names:
+  1. `<ModelPath>/attributes`
+  2. `<ModelPath>`
+  3. `XS_PROJECT` directories
+  4. `XS_FIRM` directories
+  5. `XS_SYSTEM` directories
+  - absolute path is also supported
+  - `.SObjGrp` is auto-appended when extension is omitted
 
 ## Documentation
 

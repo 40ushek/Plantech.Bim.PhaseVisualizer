@@ -181,7 +181,7 @@ internal sealed class PhaseFilterExpressionBuilder
         out IReadOnlyList<string> probeFolders)
     {
         fullPath = string.Empty;
-        sourceKind = Path.IsPathRooted(filterName) ? "absolute-path" : "model-attributes";
+        sourceKind = Path.IsPathRooted(filterName) ? "absolute-path" : "tekla-attribute-directories";
         sourceFolder = string.Empty;
         error = string.Empty;
 
@@ -197,19 +197,22 @@ internal sealed class PhaseFilterExpressionBuilder
         else
         {
             var modelPath = LazyModelConnector.ModelInstance?.GetInfo()?.ModelPath;
-            if (string.IsNullOrWhiteSpace(modelPath))
+            var searchDirectories = TeklaAttributeDirectories.GetSearchDirectories(modelPath);
+            if (searchDirectories.Count == 0)
             {
-                error = "model path unavailable";
+                error = "attribute search directories unavailable";
                 candidates = Array.Empty<string>();
                 probeFolders = Array.Empty<string>();
                 return false;
             }
 
-            var attributesPath = Path.Combine(modelPath, "attributes");
-            candidatePaths.Add(Path.Combine(attributesPath, filterName));
-            if (!Path.HasExtension(filterName))
+            foreach (var directory in searchDirectories)
             {
-                candidatePaths.Add(Path.Combine(attributesPath, filterName + TeklaViewFilterExtension));
+                candidatePaths.Add(Path.Combine(directory, filterName));
+                if (!Path.HasExtension(filterName))
+                {
+                    candidatePaths.Add(Path.Combine(directory, filterName + TeklaViewFilterExtension));
+                }
             }
         }
 

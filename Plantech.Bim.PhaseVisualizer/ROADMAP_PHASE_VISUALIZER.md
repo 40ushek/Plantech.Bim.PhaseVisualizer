@@ -1,6 +1,6 @@
 # ROADMAP: Phase Visualizer
 
-## Current State (2026-03-02)
+## Current State (2026-03-04)
 
 Implemented:
 - Dynamic WPF phase table from JSON config.
@@ -31,6 +31,13 @@ Implemented:
   - `teklaFilterName` is supported in column schema.
   - referenced `.SObjGrp` filter expression is loaded and merged with generated criteria using `AND`.
   - unresolved/invalid file is logged as warning and ignored (fail-safe).
+  - relative filter name lookup now uses Tekla attribute directories:
+    1. `<ModelPath>/attributes`
+    2. `<ModelPath>`
+    3. `XS_PROJECT`
+    4. `XS_FIRM`
+    5. `XS_SYSTEM`
+  - diagnostics include found/not-found, source folder, and candidate/probe paths.
 - Namespace simplified to `Plantech.Bim.PhaseVisualizer.*`.
 - `Bolt` object type supported: display columns (`objectType: Bolt`) and editable filter columns (`targetObjectType: Bolt`).
   `BoltGroup` objects collected alongside `Part` in the attribute scan; report properties read via `GetReportProperty`.
@@ -149,7 +156,7 @@ Done:
 - `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines with generated criteria using `AND`.
 - Filter reference resolution:
   - absolute file path, or
-  - relative name under `<ModelPath>/attributes`,
+  - relative name under Tekla attribute directories (`<ModelPath>/attributes`, `<ModelPath>`, `XS_PROJECT`, `XS_FIRM`, `XS_SYSTEM`),
   - `.SObjGrp` extension is auto-appended when omitted.
 - File filter branch is applied only for truthy boolean value in that editable column.
 - Fail-safe behavior:
@@ -172,6 +179,7 @@ Done:
 - Attribute scan path for model columns currently uses visible views (`GetVisibleViews` + `GetObjectsByBoundingBox` fallback to active view), so some table values can still be view-dependent.
 - In Tekla version mismatch scenarios (for example plugin built with TS2021 API and loaded in TS2025), active-view access can fail at runtime; this is now visible in logs via structured apply failure details.
 - Some template/system filters (for example certain `standard.SObjGrp` variants with empty template operands) may fail to parse via `Filter(fullFileName, ...)`; such filters are currently logged and ignored in composed apply expression.
+- `teklaFilterName` currently supports object-group selection filters (`.SObjGrp`) only; representation/view filters are intentionally out of scope for this pipeline.
 
 Note:
 - Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
