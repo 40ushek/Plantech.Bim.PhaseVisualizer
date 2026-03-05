@@ -29,31 +29,29 @@ internal sealed class PhaseFilterExpressionBuilder
         var diagnosticList = new List<string>();
         var normalizedSelection = NormalizeSelection(selection, diagnosticList);
         var globalTeklaFilterExpressions = BuildGlobalTeklaFilterExpressions(normalizedSelection, diagnosticList);
-        var phaseSelectionExpression = BuildPhaseSelectionExpression(normalizedSelection, diagnosticList);
+        var phaseSelectionExpression = BuildPhaseSelectionExpression(
+            normalizedSelection,
+            diagnosticList,
+            hasFollowingAndExpressions: globalTeklaFilterExpressions.Count > 0);
         if (globalTeklaFilterExpressions.Count == 0)
         {
             diagnostics = diagnosticList;
             return phaseSelectionExpression;
         }
 
-        var result = new BinaryFilterExpressionCollection();
-        if (phaseSelectionExpression.Count > 0)
-        {
-            AddAndFilter(result, phaseSelectionExpression);
-        }
-
         foreach (var fileFilterExpression in globalTeklaFilterExpressions)
         {
-            AddAndFilter(result, fileFilterExpression);
+            AddAndFilter(phaseSelectionExpression, fileFilterExpression);
         }
 
         diagnostics = diagnosticList;
-        return result;
+        return phaseSelectionExpression;
     }
 
     private static BinaryFilterExpressionCollection BuildPhaseSelectionExpression(
         IReadOnlyList<PhaseSelectionCriteria> normalizedSelection,
-        IList<string> diagnostics)
+        IList<string> diagnostics,
+        bool hasFollowingAndExpressions)
     {
         if (normalizedSelection.Count == 1)
         {
@@ -61,17 +59,23 @@ internal sealed class PhaseFilterExpressionBuilder
         }
 
         var phaseSelectionExpression = new BinaryFilterExpressionCollection();
-        foreach (var criteria in normalizedSelection)
+        for (var i = 0; i < normalizedSelection.Count; i++)
         {
+            var criteria = normalizedSelection[i];
             var phaseGroup = BuildPhaseGroup(criteria, diagnostics);
             if (phaseGroup.Count == 0)
             {
                 continue;
             }
 
+            var isLastSelection = i == normalizedSelection.Count - 1;
+            var operatorType = isLastSelection && hasFollowingAndExpressions
+                ? BinaryFilterOperatorType.BOOLEAN_AND
+                : BinaryFilterOperatorType.BOOLEAN_OR;
+
             phaseSelectionExpression.Add(new BinaryFilterExpressionItem(
                 phaseGroup,
-                BinaryFilterOperatorType.BOOLEAN_OR));
+                operatorType));
         }
 
         return phaseSelectionExpression;
