@@ -18,5 +18,8 @@ internal sealed class PhaseVisualizerContext
     public PhaseSnapshotMeta SnapshotMeta { get; set; } = new();
     public IReadOnlyList<PhaseRow> Rows { get; set; } = Array.Empty<PhaseRow>();
     public string StateFilePath { get; set; } = string.Empty;
+    public string ConfigPath { get; set; } = string.Empty;
+    public string ConfigSource { get; set; } = string.Empty;
+    public string LogPath { get; set; } = string.Empty;
 }
 

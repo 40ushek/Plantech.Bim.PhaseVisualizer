@@ -149,11 +149,27 @@
             BorderBrush="#FFD0D0D0"
             BorderThickness="1"
             CornerRadius="2">
-            <TextBlock
-                VerticalAlignment="Center"
-                FontSize="12"
-                Text="{Binding StatusText}"
-                TextTrimming="CharacterEllipsis" />
+            <StackPanel>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Text="{Binding StatusText}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    Margin="0,2,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="#FF4A4A4A"
+                    Text="{Binding ConfigPathText}"
+                    TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                    Margin="0,2,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="#FF4A4A4A"
+                    Text="{Binding LogPathText}"
+                    TextTrimming="CharacterEllipsis" />
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>

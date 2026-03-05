@@ -27,6 +27,15 @@ internal sealed class PhaseFilterExpressionBuilder
     {
         var diagnosticList = new List<string>();
         var normalizedSelection = NormalizeSelection(selection, diagnosticList);
+
+        // Avoid one unnecessary top-level OR group for single-phase apply.
+        // This reduces nesting depth of the final Tekla filter expression tree.
+        if (normalizedSelection.Count == 1)
+        {
+            diagnostics = diagnosticList;
+            return BuildPhaseGroup(normalizedSelection[0], diagnosticList);
+        }
+
         var result = new BinaryFilterExpressionCollection();
         foreach (var criteria in normalizedSelection)
         {

@@ -32,7 +32,7 @@ internal sealed class PhaseLogFileController
         {
             if (!File.Exists(logFilePath))
             {
-                return new PhaseLogOpenResult(false, $"Log file not found: {logFilePath}");
+                return new PhaseLogOpenResult(false, $"Log file not found: {logFilePath}", logFilePath);
             }
 
             Process.Start(new ProcessStartInfo
@@ -41,25 +41,28 @@ internal sealed class PhaseLogFileController
                 UseShellExecute = true,
             });
 
-            return new PhaseLogOpenResult(true, $"Opened log: {logFilePath}");
+            return new PhaseLogOpenResult(true, $"Opened log: {logFilePath}", logFilePath);
         }
         catch (Exception ex)
         {
             _log.Warning(ex, "PhaseVisualizer failed to open log file. Path={LogPath}", logFilePath);
-            return new PhaseLogOpenResult(false, $"Failed to open log: {logFilePath}");
+            return new PhaseLogOpenResult(false, $"Failed to open log: {logFilePath}", logFilePath);
         }
     }
 }
 
 internal sealed class PhaseLogOpenResult
 {
-    public PhaseLogOpenResult(bool isSuccess, string statusText)
+    public PhaseLogOpenResult(bool isSuccess, string statusText, string logFilePath)
     {
         IsSuccess = isSuccess;
         StatusText = statusText ?? string.Empty;
+        LogFilePath = logFilePath ?? string.Empty;
     }
 
     public bool IsSuccess { get; }
 
     public string StatusText { get; }
+
+    public string LogFilePath { get; }
 }

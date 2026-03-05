@@ -159,6 +159,8 @@ internal sealed class PhaseVisualizerController
     {
         LogPathDiagnosticsOnce(contextPaths, log);
 
+        var configResolution = _configProvider.ResolveConfigResolution(contextPaths.ModelConfigDirectory);
+        var effectiveConfigDirectory = _configProvider.ResolveEffectiveConfigDirectory(contextPaths.ModelConfigDirectory);
         var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
         var includePhaseObjectCounts = ShouldIncludePhaseObjectCounts(
             config,
@@ -182,6 +184,9 @@ internal sealed class PhaseVisualizerController
             Config = config,
             Rows = rows,
             StateFilePath = contextPaths.StateFilePath,
+            ConfigPath = configResolution.EffectiveConfigPath,
+            ConfigSource = configResolution.SourceName,
+            LogPath = PhaseVisualizerLogConfigurator.ResolveLogPath(effectiveConfigDirectory),
             SnapshotMeta = new PhaseSnapshotMeta
             {
                 CreatedAtUtc = snapshot.CreatedAtUtc,

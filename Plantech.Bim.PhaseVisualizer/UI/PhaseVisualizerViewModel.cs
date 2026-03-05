@@ -42,6 +42,8 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private bool _isRestoringUseVisibleViewsForSearch;
 
     private string _statusText = "Ready";
+    private string _configPathText = "Config: <unknown>";
+    private string _logPathText = "Log: <unknown>";
     private bool _showAllPhases;
     private bool _useVisibleViewsForSearch;
     private bool _showObjectCountInStatus = false;
@@ -139,6 +141,36 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         }
     }
 
+    public string ConfigPathText
+    {
+        get => _configPathText;
+        private set
+        {
+            if (_configPathText == value)
+            {
+                return;
+            }
+
+            _configPathText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string LogPathText
+    {
+        get => _logPathText;
+        private set
+        {
+            if (_logPathText == value)
+            {
+                return;
+            }
+
+            _logPathText = value;
+            OnPropertyChanged();
+        }
+    }
+
     public string PresetName
     {
         get => _presetName;
@@ -213,6 +245,10 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     {
         var result = _logFileController.Open();
         StatusText = result.StatusText;
+        if (!string.IsNullOrWhiteSpace(result.LogFilePath))
+        {
+            LogPathText = $"Log: {result.LogFilePath}";
+        }
         return result.IsSuccess;
     }
 
@@ -284,6 +320,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
         _columns = result.Columns.ToList();
         StatusText = result.StatusText;
+        UpdateRuntimePaths(context);
         OnPropertyChanged(nameof(Columns));
         OnPropertyChanged(nameof(RowsView));
     }
@@ -448,6 +485,22 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         ApplyPresetNamesState(state);
         PresetName = presetName;
         StatusText = statusText;
+    }
+
+    private void UpdateRuntimePaths(PhaseVisualizerContext context)
+    {
+        var configPath = string.IsNullOrWhiteSpace(context.ConfigPath)
+            ? "<embedded-defaults>"
+            : context.ConfigPath;
+        var configSource = string.IsNullOrWhiteSpace(context.ConfigSource)
+            ? "unknown"
+            : context.ConfigSource;
+        ConfigPathText = $"Config: {configPath} (source: {configSource})";
+
+        var logPath = string.IsNullOrWhiteSpace(context.LogPath)
+            ? "<unknown>"
+            : context.LogPath;
+        LogPathText = $"Log: {logPath}";
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
