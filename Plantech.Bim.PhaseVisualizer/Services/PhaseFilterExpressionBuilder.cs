@@ -29,43 +29,17 @@ internal sealed class PhaseFilterExpressionBuilder
         var diagnosticList = new List<string>();
         var normalizedSelection = NormalizeSelection(selection, diagnosticList);
         var globalTeklaFilterExpressions = BuildGlobalTeklaFilterExpressions(normalizedSelection, diagnosticList);
-
-        // Avoid unnecessary top-level wrapper collections to keep expression depth low.
-        if (normalizedSelection.Count == 1)
-        {
-            var singlePhaseGroup = BuildPhaseGroup(normalizedSelection[0], diagnosticList);
-            if (globalTeklaFilterExpressions.Count == 0)
-            {
-                diagnostics = diagnosticList;
-                return singlePhaseGroup;
-            }
-
-            foreach (var fileFilterExpression in globalTeklaFilterExpressions)
-            {
-                AddAndFilter(singlePhaseGroup, fileFilterExpression);
-            }
-
-            diagnostics = diagnosticList;
-            return singlePhaseGroup;
-        }
-
-        var result = new BinaryFilterExpressionCollection();
-        foreach (var criteria in normalizedSelection)
-        {
-            var phaseGroup = BuildPhaseGroup(criteria, diagnosticList);
-
-            if (phaseGroup.Count > 0)
-            {
-                result.Add(new BinaryFilterExpressionItem(
-                    phaseGroup,
-                    BinaryFilterOperatorType.BOOLEAN_OR));
-            }
-        }
-
+        var phaseSelectionExpression = BuildPhaseSelectionExpression(normalizedSelection, diagnosticList);
         if (globalTeklaFilterExpressions.Count == 0)
         {
             diagnostics = diagnosticList;
-            return result;
+            return phaseSelectionExpression;
+        }
+
+        var result = new BinaryFilterExpressionCollection();
+        if (phaseSelectionExpression.Count > 0)
+        {
+            AddAndFilter(result, phaseSelectionExpression);
         }
 
         foreach (var fileFilterExpression in globalTeklaFilterExpressions)
@@ -75,6 +49,32 @@ internal sealed class PhaseFilterExpressionBuilder
 
         diagnostics = diagnosticList;
         return result;
+    }
+
+    private static BinaryFilterExpressionCollection BuildPhaseSelectionExpression(
+        IReadOnlyList<PhaseSelectionCriteria> normalizedSelection,
+        IList<string> diagnostics)
+    {
+        if (normalizedSelection.Count == 1)
+        {
+            return BuildPhaseGroup(normalizedSelection[0], diagnostics);
+        }
+
+        var phaseSelectionExpression = new BinaryFilterExpressionCollection();
+        foreach (var criteria in normalizedSelection)
+        {
+            var phaseGroup = BuildPhaseGroup(criteria, diagnostics);
+            if (phaseGroup.Count == 0)
+            {
+                continue;
+            }
+
+            phaseSelectionExpression.Add(new BinaryFilterExpressionItem(
+                phaseGroup,
+                BinaryFilterOperatorType.BOOLEAN_OR));
+        }
+
+        return phaseSelectionExpression;
     }
 
     private static BinaryFilterExpressionCollection BuildPhaseGroup(
