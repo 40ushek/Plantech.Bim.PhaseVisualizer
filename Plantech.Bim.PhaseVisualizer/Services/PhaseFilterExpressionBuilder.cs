@@ -27,13 +27,25 @@ internal sealed class PhaseFilterExpressionBuilder
     {
         var diagnosticList = new List<string>();
         var normalizedSelection = NormalizeSelection(selection, diagnosticList);
+        var globalTeklaFilterExpressions = BuildGlobalTeklaFilterExpressions(normalizedSelection, diagnosticList);
 
-        // Avoid one unnecessary top-level OR group for single-phase apply.
-        // This reduces nesting depth of the final Tekla filter expression tree.
+        // Avoid unnecessary top-level wrapper collections to keep expression depth low.
         if (normalizedSelection.Count == 1)
         {
+            var singlePhaseGroup = BuildPhaseGroup(normalizedSelection[0], diagnosticList);
+            if (globalTeklaFilterExpressions.Count == 0)
+            {
+                diagnostics = diagnosticList;
+                return singlePhaseGroup;
+            }
+
+            foreach (var fileFilterExpression in globalTeklaFilterExpressions)
+            {
+                AddAndFilter(singlePhaseGroup, fileFilterExpression);
+            }
+
             diagnostics = diagnosticList;
-            return BuildPhaseGroup(normalizedSelection[0], diagnosticList);
+            return singlePhaseGroup;
         }
 
         var result = new BinaryFilterExpressionCollection();
@@ -47,6 +59,17 @@ internal sealed class PhaseFilterExpressionBuilder
                     phaseGroup,
                     BinaryFilterOperatorType.BOOLEAN_OR));
             }
+        }
+
+        if (globalTeklaFilterExpressions.Count == 0)
+        {
+            diagnostics = diagnosticList;
+            return result;
+        }
+
+        foreach (var fileFilterExpression in globalTeklaFilterExpressions)
+        {
+            AddAndFilter(result, fileFilterExpression);
         }
 
         diagnostics = diagnosticList;
@@ -70,13 +93,6 @@ internal sealed class PhaseFilterExpressionBuilder
         {
             AddAndFilter(
                 phaseGroup,
-                BuildTeklaFilterReferenceExpression(
-                    attributeFilter,
-                    criteria.PhaseNumber,
-                    diagnostics));
-
-            AddAndFilter(
-                phaseGroup,
                 BuildAttributeExpression(
                     attributeFilter,
                     criteria.PhaseNumber,
@@ -84,6 +100,44 @@ internal sealed class PhaseFilterExpressionBuilder
         }
 
         return phaseGroup;
+    }
+
+    private static IReadOnlyList<FilterExpression> BuildGlobalTeklaFilterExpressions(
+        IReadOnlyList<PhaseSelectionCriteria> selection,
+        IList<string> diagnostics)
+    {
+        var result = new List<FilterExpression>();
+        var seenFilterNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var criteria in selection)
+        {
+            foreach (var attributeFilter in criteria.AttributeFilters ?? Enumerable.Empty<PhaseAttributeFilter>())
+            {
+                if (attributeFilter == null || string.IsNullOrWhiteSpace(attributeFilter.TeklaFilterName))
+                {
+                    continue;
+                }
+
+                var expression = BuildTeklaFilterReferenceExpression(
+                    attributeFilter,
+                    criteria.PhaseNumber,
+                    diagnostics);
+                if (expression == null)
+                {
+                    continue;
+                }
+
+                var filterName = attributeFilter.TeklaFilterName.Trim();
+                if (!seenFilterNames.Add(filterName))
+                {
+                    continue;
+                }
+
+                result.Add(expression);
+            }
+        }
+
+        return result;
     }
 
     private static void AddAndFilter(BinaryFilterExpressionCollection target, FilterExpression? expression)
