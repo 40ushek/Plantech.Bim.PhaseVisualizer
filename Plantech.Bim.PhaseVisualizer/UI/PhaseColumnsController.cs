@@ -23,6 +23,7 @@ internal sealed class PhaseColumnsController
                 TargetObjectType = c.TargetObjectType,
                 TargetAttribute = c.TargetAttribute ?? string.Empty,
                 TeklaFilterName = c.TeklaFilterName ?? string.Empty,
+                TeklaFilterNegate = c.TeklaFilterNegate,
                 BooleanMode = c.BooleanMode ?? string.Empty,
                 ApplyRule = c.ApplyRule,
                 Aggregate = c.Aggregate,

@@ -94,6 +94,7 @@ internal static class PhaseSelectionBuilder
                 TargetObjectType = column.TargetObjectType,
                 TargetAttribute = column.TargetAttribute,
                 TeklaFilterName = column.TeklaFilterName,
+                TeklaFilterNegate = column.TeklaFilterNegate,
                 BooleanMode = column.BooleanMode,
                 ApplyRule = column.ApplyRule,
                 ValueType = column.Type,

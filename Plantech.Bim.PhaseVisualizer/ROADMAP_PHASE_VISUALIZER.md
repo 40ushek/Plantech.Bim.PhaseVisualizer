@@ -154,6 +154,7 @@ Done:
   - accepted only for editable boolean columns,
   - unsupported usage is ignored with warning.
 - `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines with generated criteria using `AND`.
+- `teklaFilterNegate` option added for file-filter columns (optional; default `false`) to invert loaded file filter before merge.
 - Filter reference resolution:
   - absolute file path, or
   - relative name under Tekla attribute directories (`<ModelPath>/attributes`, `<ModelPath>`, `XS_PROJECT`, `XS_FIRM`, `XS_SYSTEM`),

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Tekla.Structures.Filtering;
 using Tekla.Structures.Filtering.Categories;
 
@@ -128,7 +129,8 @@ internal sealed class PhaseFilterExpressionBuilder
                 }
 
                 var filterName = attributeFilter.TeklaFilterName.Trim();
-                if (!seenFilterNames.Add(filterName))
+                var filterKey = FormattableString.Invariant($"{filterName}|negate={attributeFilter.TeklaFilterNegate}");
+                if (!seenFilterNames.Add(filterKey))
                 {
                     continue;
                 }
@@ -223,6 +225,20 @@ internal sealed class PhaseFilterExpressionBuilder
             if (expression == null)
             {
                 diagnostics.Add($"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' has empty expression, filter ignored.");
+                return null;
+            }
+
+            if (attributeFilter.TeklaFilterNegate)
+            {
+                if (!TryNegateFilterExpression(expression, out var negatedExpression, out var negateReason))
+                {
+                    diagnostics.Add(
+                        $"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' negate failed ({negateReason}), filter ignored.");
+                    return null;
+                }
+
+                diagnostics.Add($"INFO: Phase {phaseNumber}: teklaFilter '{filterName}' applied with negate=true.");
+                expression = negatedExpression;
             }
 
             return expression;
@@ -232,6 +248,278 @@ internal sealed class PhaseFilterExpressionBuilder
             diagnostics.Add($"WARN: Phase {phaseNumber}: teklaFilter '{filterName}' load failed ({ex.Message}), filter ignored.");
             return null;
         }
+    }
+
+    private static bool TryNegateFilterExpression(
+        FilterExpression expression,
+        out FilterExpression negatedExpression,
+        out string reason)
+    {
+        reason = string.Empty;
+        negatedExpression = expression;
+
+        if (expression is BinaryFilterExpressionCollection collection)
+        {
+            var negatedCollection = new BinaryFilterExpressionCollection();
+            for (var i = 0; i < collection.Count; i++)
+            {
+                var item = collection[i];
+                if (!TryGetBinaryItemExpression(item, out var childExpression))
+                {
+                    reason = "cannot read binary item expression";
+                    negatedExpression = expression;
+                    return false;
+                }
+
+                if (!TryNegateFilterExpression(childExpression, out var negatedChild, out reason))
+                {
+                    negatedExpression = expression;
+                    return false;
+                }
+
+                var itemOperator = TryGetBinaryItemOperator(item, out var existingOperator)
+                    ? existingOperator
+                    : BinaryFilterOperatorType.EMPTY;
+                var negatedOperator = itemOperator switch
+                {
+                    BinaryFilterOperatorType.BOOLEAN_AND => BinaryFilterOperatorType.BOOLEAN_OR,
+                    BinaryFilterOperatorType.BOOLEAN_OR => BinaryFilterOperatorType.BOOLEAN_AND,
+                    _ => itemOperator,
+                };
+
+                negatedCollection.Add(new BinaryFilterExpressionItem(negatedChild, negatedOperator));
+            }
+
+            negatedExpression = negatedCollection;
+            return true;
+        }
+
+        if (expression is not BinaryFilterExpression binaryExpression)
+        {
+            reason = $"unsupported expression type: {expression.GetType().Name}";
+            return false;
+        }
+
+        if (!TryGetBinaryOperatorName(binaryExpression, out var operatorName))
+        {
+            reason = "cannot read binary operator";
+            return false;
+        }
+
+        var invertedOperatorName = InvertOperatorName(operatorName);
+        if (string.IsNullOrWhiteSpace(invertedOperatorName))
+        {
+            reason = $"unsupported operator: {operatorName}";
+            return false;
+        }
+
+        if (!TryGetBinaryOperands(binaryExpression, out var left, out var right))
+        {
+            reason = "cannot read binary operands";
+            return false;
+        }
+
+        if (left is StringFilterExpression stringLeft
+            && right is StringConstantFilterExpression stringRight)
+        {
+            if (!TryParseEnumValue<StringOperatorType>(invertedOperatorName, out var parsedStringOperator))
+            {
+                reason = $"cannot parse string operator: {invertedOperatorName}";
+                return false;
+            }
+
+            negatedExpression = new BinaryFilterExpression(
+                stringLeft,
+                parsedStringOperator,
+                stringRight);
+            return true;
+        }
+
+        if (left is NumericFilterExpression numericLeft
+            && right is NumericConstantFilterExpression numericRight)
+        {
+            if (!TryParseEnumValue<NumericOperatorType>(invertedOperatorName, out var parsedNumericOperator))
+            {
+                reason = $"cannot parse numeric operator: {invertedOperatorName}";
+                return false;
+            }
+
+            negatedExpression = new BinaryFilterExpression(
+                numericLeft,
+                parsedNumericOperator,
+                numericRight);
+            return true;
+        }
+
+        if (left is BooleanFilterExpression booleanLeft
+            && right is BooleanConstantFilterExpression booleanRight)
+        {
+            if (!TryParseEnumValue<BooleanOperatorType>(invertedOperatorName, out var parsedBooleanOperator))
+            {
+                reason = $"cannot parse boolean operator: {invertedOperatorName}";
+                return false;
+            }
+
+            negatedExpression = new BinaryFilterExpression(
+                booleanLeft,
+                parsedBooleanOperator,
+                booleanRight);
+            return true;
+        }
+
+        if (left is DateTimeFilterExpression dateTimeLeft
+            && right is DateTimeConstantFilterExpression dateTimeRight)
+        {
+            if (!TryParseEnumValue<DateTimeOperatorType>(invertedOperatorName, out var parsedDateTimeOperator))
+            {
+                reason = $"cannot parse datetime operator: {invertedOperatorName}";
+                return false;
+            }
+
+            negatedExpression = new BinaryFilterExpression(
+                dateTimeLeft,
+                parsedDateTimeOperator,
+                dateTimeRight);
+            return true;
+        }
+
+        reason = $"unsupported binary operand types: {left.GetType().Name}/{right.GetType().Name}";
+        return false;
+    }
+
+    private static string InvertOperatorName(string input)
+    {
+        var normalized = (input ?? string.Empty).Trim();
+        return normalized switch
+        {
+            "IS_EQUAL" => "IS_NOT_EQUAL",
+            "IS_NOT_EQUAL" => "IS_EQUAL",
+            "CONTAINS" => "NOT_CONTAINS",
+            "NOT_CONTAINS" => "CONTAINS",
+            "STARTS_WITH" => "NOT_STARTS_WITH",
+            "NOT_STARTS_WITH" => "STARTS_WITH",
+            "ENDS_WITH" => "NOT_ENDS_WITH",
+            "NOT_ENDS_WITH" => "ENDS_WITH",
+            "SMALLER_THAN" => "GREATER_OR_EQUAL",
+            "SMALLER_OR_EQUAL" => "GREATER_THAN",
+            "GREATER_THAN" => "SMALLER_OR_EQUAL",
+            "GREATER_OR_EQUAL" => "SMALLER_THAN",
+            "EARLIER_THAN" => "LATER_OR_EQUAL",
+            "EARLIER_OR_EQUAL" => "LATER_THAN",
+            "LATER_THAN" => "EARLIER_OR_EQUAL",
+            "LATER_OR_EQUAL" => "EARLIER_THAN",
+            "BOOLEAN_AND" => "BOOLEAN_OR",
+            "BOOLEAN_OR" => "BOOLEAN_AND",
+            _ => string.Empty,
+        };
+    }
+
+    private static bool TryGetBinaryItemExpression(BinaryFilterExpressionItem item, out FilterExpression expression)
+    {
+        expression = default!;
+        if (item == null)
+        {
+            return false;
+        }
+
+        var value = GetMemberValue(item, "FilterExpression", "<FilterExpression>k__BackingField");
+        if (value is FilterExpression filterExpression)
+        {
+            expression = filterExpression;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetBinaryItemOperator(BinaryFilterExpressionItem item, out BinaryFilterOperatorType operatorType)
+    {
+        operatorType = BinaryFilterOperatorType.EMPTY;
+        if (item == null)
+        {
+            return false;
+        }
+
+        var value = GetMemberValue(item, "BinaryFilterItemOperatorType", "<BinaryFilterItemOperatorType>k__BackingField");
+        if (value is BinaryFilterOperatorType binaryOperatorType)
+        {
+            operatorType = binaryOperatorType;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetBinaryOperands(BinaryFilterExpression expression, out object left, out object right)
+    {
+        left = default!;
+        right = default!;
+
+        if (expression == null)
+        {
+            return false;
+        }
+
+        var leftValue = GetMemberValue(expression, "Left", "<Left>k__BackingField");
+        var rightValue = GetMemberValue(expression, "Right", "<Right>k__BackingField");
+        if (leftValue == null || rightValue == null)
+        {
+            return false;
+        }
+
+        left = leftValue;
+        right = rightValue;
+        return true;
+    }
+
+    private static bool TryGetBinaryOperatorName(BinaryFilterExpression expression, out string operatorName)
+    {
+        operatorName = string.Empty;
+        if (expression == null)
+        {
+            return false;
+        }
+
+        var value = GetMemberValue(expression, "Operator", "<Operator>k__BackingField");
+        if (value == null)
+        {
+            return false;
+        }
+
+        operatorName = value.ToString() ?? string.Empty;
+        return !string.IsNullOrWhiteSpace(operatorName);
+    }
+
+    private static object? GetMemberValue(object source, string propertyName, string fieldName)
+    {
+        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        var property = source.GetType().GetProperty(propertyName, Flags);
+        if (property != null)
+        {
+            return property.GetValue(source, null);
+        }
+
+        var field = source.GetType().GetField(fieldName, Flags);
+        if (field != null)
+        {
+            return field.GetValue(source);
+        }
+
+        return null;
+    }
+
+    private static bool TryParseEnumValue<TEnum>(string name, out TEnum value)
+        where TEnum : struct
+    {
+        if (Enum.TryParse(name, ignoreCase: true, out TEnum parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        value = default;
+        return false;
     }
 
     private static bool TryResolveTeklaFilterPath(
@@ -972,9 +1260,9 @@ internal sealed class PhaseFilterExpressionBuilder
                         && (!string.IsNullOrWhiteSpace(x.TargetAttribute)
                             || !string.IsNullOrWhiteSpace(x.TeklaFilterName))
                         && !string.IsNullOrWhiteSpace(x.Value))
-                    .GroupBy(
-                        x => FormattableString.Invariant(
-                            $"{x.TargetObjectType}:{x.TargetAttribute}:{x.TeklaFilterName}:{x.BooleanMode}:{x.ValueType}:{x.Value}:{BuildApplyRuleSignature(x.ApplyRule)}"),
+                        .GroupBy(
+                            x => FormattableString.Invariant(
+                            $"{x.TargetObjectType}:{x.TargetAttribute}:{x.TeklaFilterName}:{x.TeklaFilterNegate}:{x.BooleanMode}:{x.ValueType}:{x.Value}:{BuildApplyRuleSignature(x.ApplyRule)}"),
                         StringComparer.OrdinalIgnoreCase)
                     .Select(x => x.First())
                     .ToList();

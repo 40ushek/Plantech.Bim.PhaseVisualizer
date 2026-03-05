@@ -182,13 +182,16 @@ You can attach an existing Tekla object group filter (`.SObjGrp`) to a boolean e
   "label": "Standard",
   "type": "Boolean",
   "editable": true,
-  "teklaFilterName": "standard.SObjGrp"
+  "teklaFilterName": "standard.SObjGrp",
+  "teklaFilterNegate": false
 }
 ```
 
 Behavior:
 - The file-filter branch is applied only when the column value is `true`.
 - `teklaFilterName` is merged with generated phase/attribute criteria using `AND`.
+- `teklaFilterNegate` is optional (default: `false` when omitted).
+- If `teklaFilterNegate=true`, the loaded Tekla filter expression is inverted (`NOT`) before AND-merge.
 - `teklaFilterName` can be:
   - absolute file path, or
   - relative name searched in Tekla attribute directories (in order):
