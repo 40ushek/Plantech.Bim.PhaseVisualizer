@@ -10,8 +10,10 @@ public sealed class FilteredEvaluationResult
     public int IntegerValue { get; set; }
     public string ConfigFileName { get; set; } = string.Empty;
     public string ConfigFilePath { get; set; } = string.Empty;
+    public string ConfigFileContent { get; set; } = string.Empty;
     public string TeklaFilterName { get; set; } = string.Empty;
     public string ResolvedTeklaFilterPath { get; set; } = string.Empty;
+    public string ResolvedTeklaFilterContent { get; set; } = string.Empty;
     public string ReportProperty { get; set; } = string.Empty;
     public string ExpectedValue { get; set; } = string.Empty;
     public string ActualValue { get; set; } = string.Empty;

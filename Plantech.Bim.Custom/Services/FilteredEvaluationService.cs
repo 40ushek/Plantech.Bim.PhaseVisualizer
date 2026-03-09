@@ -1,3 +1,4 @@
+using Plantech.Bim.Custom.Common;
 using Plantech.Bim.Custom.Configuration;
 using System;
 using System.IO;
@@ -10,15 +11,15 @@ public sealed class FilteredEvaluationService
 {
     private const string ConfigFileName = "filtered01.json";
 
-    private readonly Model _model = new();
     private readonly CustomAttributeConfigLoader _configLoader = new(ConfigFileName);
     private readonly TeklaFilterObjectMatcher _filterMatcher = new();
+    private static Model ModelInstance => LazyModelConnector.ModelInstance;
 
     public static bool IsTeklaConnected()
     {
         try
         {
-            return new Model().GetConnectionStatus();
+            return ModelInstance.GetConnectionStatus();
         }
         catch
         {
@@ -29,7 +30,7 @@ public sealed class FilteredEvaluationService
     public FilteredEvaluationResult Evaluate(int objectId)
     {
         var identifier = new Identifier(objectId);
-        var modelObject = _model.SelectModelObject(identifier);
+        var modelObject = ModelInstance.SelectModelObject(identifier);
         if (modelObject == null)
         {
             return new FilteredEvaluationResult
@@ -40,9 +41,10 @@ public sealed class FilteredEvaluationService
             };
         }
 
-        var modelPath = _model.GetInfo()?.ModelPath;
+        var modelPath = ModelInstance.GetInfo()?.ModelPath;
         var config = _configLoader.Load(modelPath);
         var configFilePath = ResolveConfigFilePath(modelPath);
+        var configFileContent = ReadFileText(configFilePath);
         if (config == null)
         {
             return new FilteredEvaluationResult
@@ -52,6 +54,7 @@ public sealed class FilteredEvaluationService
                 HasModelObject = true,
                 ConfigFileName = ConfigFileName,
                 ConfigFilePath = configFilePath,
+                ConfigFileContent = configFileContent,
                 FailureReason = "Config file was not found or could not be parsed.",
             };
         }
@@ -74,8 +77,10 @@ public sealed class FilteredEvaluationService
                 IntegerValue = isMatch ? config.TrueValue : config.FalseValue,
                 ConfigFileName = ConfigFileName,
                 ConfigFilePath = configFilePath,
+                ConfigFileContent = configFileContent,
                 TeklaFilterName = config.TeklaFilterName,
                 ResolvedTeklaFilterPath = resolvedFilterPath,
+                ResolvedTeklaFilterContent = ReadFileText(resolvedFilterPath),
                 FailureReason = isMatch || !string.IsNullOrWhiteSpace(resolvedFilterPath)
                     ? string.Empty
                     : "Tekla filter file was not found or did not include the object.",
@@ -94,6 +99,7 @@ public sealed class FilteredEvaluationService
             IntegerValue = isValueMatch ? config.TrueValue : config.FalseValue,
             ConfigFileName = ConfigFileName,
             ConfigFilePath = configFilePath,
+            ConfigFileContent = configFileContent,
             ReportProperty = config.ReportProperty,
             ExpectedValue = config.ExpectedValue,
             ActualValue = actualValue,
@@ -114,6 +120,23 @@ public sealed class FilteredEvaluationService
         }
 
         return string.Empty;
+    }
+
+    private static string ReadFileText(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     private static string ReadReportProperty(ModelObject modelObject, string reportProperty)

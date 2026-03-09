@@ -1,5 +1,7 @@
 using Plantech.Bim.Custom.Debug;
+using Plantech.Bim.Custom.Services;
 using System;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,6 +12,7 @@ namespace Plantech.Bim.Custom.Host;
 
 internal sealed class HostWindow : Window
 {
+    private readonly FilteredEvaluationService _evaluationService = new();
     private readonly TextBox _output;
     private readonly TextBlock _status;
 
@@ -125,20 +128,46 @@ internal sealed class HostWindow : Window
             var intValue = FilteredPluginDebugRunner.GetIntegerProperty(objectId);
             var doubleValue = FilteredPluginDebugRunner.GetDoubleProperty(objectId);
             var stringValue = FilteredPluginDebugRunner.GetStringProperty(objectId);
+            var evaluation = _evaluationService.Evaluate(objectId);
 
             _status.Text = $"Plugin called for object {objectId}. Integer={intValue}.";
-            _output.Text =
-$"ObjectId: {objectId}{Environment.NewLine}" +
-$"ObjectType: {modelObject.GetType().Name}{Environment.NewLine}" +
-$"Plugin: CUSTOM.PT.Filtered01{Environment.NewLine}" +
-$"GetIntegerProperty: {intValue}{Environment.NewLine}" +
-$"GetDoubleProperty: {doubleValue}{Environment.NewLine}" +
-$"GetStringProperty: {stringValue}";
+            _output.Text = FormatOutput(modelObject, intValue, doubleValue, stringValue, evaluation);
         }
         catch (Exception ex)
         {
             _status.Text = "Evaluation failed.";
             _output.Text = ex.ToString();
         }
+    }
+
+    private static string FormatOutput(
+        ModelObject modelObject,
+        int intValue,
+        double doubleValue,
+        string stringValue,
+        FilteredEvaluationResult evaluation)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"ObjectId: {modelObject.Identifier.ID}");
+        sb.AppendLine($"ObjectType: {modelObject.GetType().Name}");
+        sb.AppendLine("Plugin: CUSTOM.PT.Filtered01");
+        sb.AppendLine($"GetIntegerProperty: {intValue}");
+        sb.AppendLine($"GetDoubleProperty: {doubleValue}");
+        sb.AppendLine($"GetStringProperty: {stringValue}");
+        sb.AppendLine($"ConfigFilePath: {evaluation.ConfigFilePath}");
+        sb.AppendLine($"TeklaFilterName: {evaluation.TeklaFilterName}");
+        sb.AppendLine($"ResolvedTeklaFilterPath: {evaluation.ResolvedTeklaFilterPath}");
+        sb.AppendLine($"FailureReason: {evaluation.FailureReason}");
+        sb.AppendLine();
+        sb.AppendLine("=== Config Content ===");
+        sb.AppendLine(string.IsNullOrWhiteSpace(evaluation.ConfigFileContent)
+            ? "<config not found or empty>"
+            : evaluation.ConfigFileContent);
+        sb.AppendLine();
+        sb.AppendLine("=== Filter Content ===");
+        sb.AppendLine(string.IsNullOrWhiteSpace(evaluation.ResolvedTeklaFilterContent)
+            ? "<filter not found, unresolved, or empty>"
+            : evaluation.ResolvedTeklaFilterContent);
+        return sb.ToString();
     }
 }

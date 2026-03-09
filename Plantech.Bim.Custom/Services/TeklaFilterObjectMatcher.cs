@@ -57,8 +57,7 @@ internal sealed class TeklaFilterObjectMatcher
     private static HashSet<int> BuildObjectIdSet(string fullPath)
     {
         var result = new HashSet<int>();
-        var model = new Model();
-        var selector = model.GetModelObjectSelector();
+        var selector = LazyModelConnector.ModelInstance.GetModelObjectSelector();
         if (selector == null)
         {
             return result;
