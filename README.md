@@ -1,17 +1,26 @@
-# Plantech.Bim.PhaseVisualizer
+# Plantech BIM Tools
 
-Tekla Structures phase visualizer with config-driven columns and view filtering.
+Tekla Structures tooling for configuration-driven visualization and custom attributes.
 
 ## What Is Included
 
 - `Plantech.Bim.PhaseVisualizer` - main library/plugin logic.
 - `Plantech.Bim.PhaseVisualizer.Host` - host app for standalone testing.
+- `Plantech.Bim.Custom` - JSON-driven custom attribute prototype for Tekla.
+- `Plantech.Bim.Custom.Host` - interactive host for custom attribute debugging and object picking.
 
 The tool supports:
 - host window mode,
 - Tekla plugin window mode,
 - JSON-driven table/filters (`PT_PhaseVisualizer/phase-visualizer.json`),
 - generated Tekla view filters (`PT_SubsystemSelection`).
+
+`Plantech.Bim.Custom` currently includes:
+- `CUSTOM.PT.Filtered01`
+- JSON-based runtime config (`filtered01.json`)
+- Tekla filter-based matching through `.SObjGrp`
+- report property fallback matching
+- a debug host that calls the real plugin entry points for a picked object id
 
 ## Quick Start
 
@@ -46,6 +55,7 @@ Detailed documentation and behavior notes:
 - `Plantech.Bim.PhaseVisualizer/README.md`
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_PHASE_VISUALIZER.md`
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_APPLY_RULES.md`
+- `Plantech.Bim.Custom/README.md`
 
 Repository-level docs:
 - `CONTRIBUTING.md`

@@ -13,7 +13,7 @@ internal sealed class CustomAttributeConfigLoader
     private string _cachedModelPathKey = string.Empty;
     private string _cachedPath = string.Empty;
     private DateTime _cachedWriteTimeUtc = DateTime.MinValue;
-    private DateTime _cachedLastAccessUtc = DateTime.MinValue;
+    private DateTime _cachedLastValidationUtc = DateTime.MinValue;
     private CustomAttributeConfig? _cachedConfig;
 
     public CustomAttributeConfigLoader(string configFileName)
@@ -35,9 +35,8 @@ internal sealed class CustomAttributeConfigLoader
         {
             if (string.Equals(_cachedModelPathKey, modelPathKey, StringComparison.OrdinalIgnoreCase)
                 && !string.IsNullOrWhiteSpace(_cachedPath)
-                && nowUtc - _cachedLastAccessUtc <= HotCacheWindow)
+                && nowUtc - _cachedLastValidationUtc <= HotCacheWindow)
             {
-                _cachedLastAccessUtc = nowUtc;
                 return new ConfigSnapshot(_cachedPath, _cachedConfig);
             }
         }
@@ -50,7 +49,7 @@ internal sealed class CustomAttributeConfigLoader
                 _cachedModelPathKey = modelPathKey;
                 _cachedPath = string.Empty;
                 _cachedWriteTimeUtc = DateTime.MinValue;
-                _cachedLastAccessUtc = nowUtc;
+                _cachedLastValidationUtc = nowUtc;
                 _cachedConfig = null;
             }
             return new ConfigSnapshot(string.Empty, null);
@@ -65,7 +64,7 @@ internal sealed class CustomAttributeConfigLoader
                 && string.Equals(_cachedPath, configPath, StringComparison.OrdinalIgnoreCase)
                 && _cachedWriteTimeUtc == writeTimeUtc)
             {
-                _cachedLastAccessUtc = nowUtc;
+                _cachedLastValidationUtc = nowUtc;
                 return new ConfigSnapshot(_cachedPath, _cachedConfig);
             }
 
@@ -75,7 +74,7 @@ internal sealed class CustomAttributeConfigLoader
                 _cachedModelPathKey = modelPathKey;
                 _cachedPath = configPath;
                 _cachedWriteTimeUtc = writeTimeUtc;
-                _cachedLastAccessUtc = nowUtc;
+                _cachedLastValidationUtc = nowUtc;
                 _cachedConfig = null;
                 return new ConfigSnapshot(_cachedPath, null);
             }
@@ -84,7 +83,7 @@ internal sealed class CustomAttributeConfigLoader
             _cachedModelPathKey = modelPathKey;
             _cachedPath = configPath;
             _cachedWriteTimeUtc = writeTimeUtc;
-            _cachedLastAccessUtc = nowUtc;
+            _cachedLastValidationUtc = nowUtc;
             return new ConfigSnapshot(_cachedPath, _cachedConfig);
         }
     }

@@ -42,25 +42,14 @@ internal sealed class TeklaFilterObjectMatcher
         lock (SyncRoot)
         {
             if (Cache.TryGetValue(fullPath, out var cached)
-                && nowUtc - cached.LastAccessUtc <= HotCacheWindow)
+                && nowUtc - cached.LastValidationUtc <= HotCacheWindow)
             {
-                cached.LastAccessUtc = nowUtc;
-                return cached.ObjectIds;
-            }
-        }
-
-        var writeTimeUtc = File.GetLastWriteTimeUtc(fullPath);
-
-        lock (SyncRoot)
-        {
-            if (Cache.TryGetValue(fullPath, out var cached) && cached.WriteTimeUtc == writeTimeUtc)
-            {
-                cached.LastAccessUtc = nowUtc;
                 return cached.ObjectIds;
             }
         }
 
         var loaded = BuildObjectIdSet(fullPath);
+        var writeTimeUtc = File.GetLastWriteTimeUtc(fullPath);
 
         lock (SyncRoot)
         {
@@ -128,9 +117,8 @@ internal sealed class TeklaFilterObjectMatcher
         lock (SyncRoot)
         {
             if (PathCache.TryGetValue(cacheKey, out var cached)
-                && nowUtc - cached.LastAccessUtc <= HotCacheWindow)
+                && nowUtc - cached.LastValidationUtc <= HotCacheWindow)
             {
-                cached.LastAccessUtc = nowUtc;
                 fullPath = cached.ResolvedPath;
                 return cached.Found;
             }
@@ -186,7 +174,7 @@ internal sealed class TeklaFilterObjectMatcher
             {
                 ResolvedPath = resolvedPath,
                 Found = found,
-                LastAccessUtc = nowUtc,
+                LastValidationUtc = nowUtc,
             };
         }
     }
@@ -196,12 +184,12 @@ internal sealed class TeklaFilterObjectMatcher
         public CacheEntry(DateTime writeTimeUtc, DateTime lastAccessUtc, HashSet<int> objectIds)
         {
             WriteTimeUtc = writeTimeUtc;
-            LastAccessUtc = lastAccessUtc;
+            LastValidationUtc = lastAccessUtc;
             ObjectIds = objectIds;
         }
 
         public DateTime WriteTimeUtc { get; }
-        public DateTime LastAccessUtc { get; set; }
+        public DateTime LastValidationUtc { get; set; }
         public HashSet<int> ObjectIds { get; }
     }
 
@@ -209,6 +197,6 @@ internal sealed class TeklaFilterObjectMatcher
     {
         public string ResolvedPath { get; set; } = string.Empty;
         public bool Found { get; set; }
-        public DateTime LastAccessUtc { get; set; }
+        public DateTime LastValidationUtc { get; set; }
     }
 }
