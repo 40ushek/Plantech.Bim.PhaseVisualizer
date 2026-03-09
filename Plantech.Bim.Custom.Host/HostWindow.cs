@@ -13,6 +13,7 @@ namespace Plantech.Bim.Custom.Host;
 internal sealed class HostWindow : Window
 {
     private readonly FilteredEvaluationService _evaluationService = new();
+    private readonly FilteredEvaluationDiagnosticsService _diagnosticsService = new();
     private readonly TextBox _output;
     private readonly TextBlock _status;
 
@@ -128,7 +129,7 @@ internal sealed class HostWindow : Window
             var intValue = FilteredPluginDebugRunner.GetIntegerProperty(objectId);
             var doubleValue = FilteredPluginDebugRunner.GetDoubleProperty(objectId);
             var stringValue = FilteredPluginDebugRunner.GetStringProperty(objectId);
-            var evaluation = _evaluationService.Evaluate(objectId);
+            var evaluation = _diagnosticsService.Enrich(_evaluationService.Evaluate(objectId));
 
             _status.Text = $"Plugin called for object {objectId}. Integer={intValue}.";
             _output.Text = FormatOutput(modelObject, intValue, doubleValue, stringValue, evaluation);

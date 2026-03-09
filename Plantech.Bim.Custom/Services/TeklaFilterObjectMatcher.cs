@@ -12,8 +12,10 @@ namespace Plantech.Bim.Custom.Services;
 internal sealed class TeklaFilterObjectMatcher
 {
     private const string TeklaViewFilterExtension = ".SObjGrp";
+    private static readonly TimeSpan HotCacheWindow = TimeSpan.FromSeconds(2);
     private static readonly object SyncRoot = new();
     private static readonly Dictionary<string, CacheEntry> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, PathCacheEntry> PathCache = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsMatch(string filterName, string? modelPath, int objectId)
     {
@@ -35,12 +37,25 @@ internal sealed class TeklaFilterObjectMatcher
 
     private static HashSet<int> LoadObjectIds(string fullPath)
     {
+        var nowUtc = DateTime.UtcNow;
+
+        lock (SyncRoot)
+        {
+            if (Cache.TryGetValue(fullPath, out var cached)
+                && nowUtc - cached.LastAccessUtc <= HotCacheWindow)
+            {
+                cached.LastAccessUtc = nowUtc;
+                return cached.ObjectIds;
+            }
+        }
+
         var writeTimeUtc = File.GetLastWriteTimeUtc(fullPath);
 
         lock (SyncRoot)
         {
             if (Cache.TryGetValue(fullPath, out var cached) && cached.WriteTimeUtc == writeTimeUtc)
             {
+                cached.LastAccessUtc = nowUtc;
                 return cached.ObjectIds;
             }
         }
@@ -49,7 +64,7 @@ internal sealed class TeklaFilterObjectMatcher
 
         lock (SyncRoot)
         {
-            Cache[fullPath] = new CacheEntry(writeTimeUtc, loaded);
+            Cache[fullPath] = new CacheEntry(writeTimeUtc, nowUtc, loaded);
             return loaded;
         }
     }
@@ -108,6 +123,19 @@ internal sealed class TeklaFilterObjectMatcher
             return false;
         }
 
+        var cacheKey = BuildPathCacheKey(filterName, modelPath);
+        var nowUtc = DateTime.UtcNow;
+        lock (SyncRoot)
+        {
+            if (PathCache.TryGetValue(cacheKey, out var cached)
+                && nowUtc - cached.LastAccessUtc <= HotCacheWindow)
+            {
+                cached.LastAccessUtc = nowUtc;
+                fullPath = cached.ResolvedPath;
+                return cached.Found;
+            }
+        }
+
         var candidatePaths = new List<string>();
         if (Path.IsPathRooted(filterName))
         {
@@ -136,22 +164,51 @@ internal sealed class TeklaFilterObjectMatcher
             if (File.Exists(candidate))
             {
                 fullPath = candidate;
+                UpdatePathCache(cacheKey, nowUtc, fullPath, true);
                 return true;
             }
         }
 
+        UpdatePathCache(cacheKey, nowUtc, string.Empty, false);
         return false;
+    }
+
+    private static string BuildPathCacheKey(string filterName, string? modelPath)
+    {
+        return FormattableString.Invariant($"{modelPath?.Trim() ?? string.Empty}|{filterName.Trim()}");
+    }
+
+    private static void UpdatePathCache(string cacheKey, DateTime nowUtc, string resolvedPath, bool found)
+    {
+        lock (SyncRoot)
+        {
+            PathCache[cacheKey] = new PathCacheEntry
+            {
+                ResolvedPath = resolvedPath,
+                Found = found,
+                LastAccessUtc = nowUtc,
+            };
+        }
     }
 
     private sealed class CacheEntry
     {
-        public CacheEntry(DateTime writeTimeUtc, HashSet<int> objectIds)
+        public CacheEntry(DateTime writeTimeUtc, DateTime lastAccessUtc, HashSet<int> objectIds)
         {
             WriteTimeUtc = writeTimeUtc;
+            LastAccessUtc = lastAccessUtc;
             ObjectIds = objectIds;
         }
 
         public DateTime WriteTimeUtc { get; }
+        public DateTime LastAccessUtc { get; set; }
         public HashSet<int> ObjectIds { get; }
+    }
+
+    private sealed class PathCacheEntry
+    {
+        public string ResolvedPath { get; set; } = string.Empty;
+        public bool Found { get; set; }
+        public DateTime LastAccessUtc { get; set; }
     }
 }

@@ -1,7 +1,6 @@
 using Plantech.Bim.Custom.Common;
 using Plantech.Bim.Custom.Configuration;
 using System;
-using System.IO;
 using Tekla.Structures;
 using Tekla.Structures.Model;
 
@@ -42,9 +41,8 @@ public sealed class FilteredEvaluationService
         }
 
         var modelPath = ModelInstance.GetInfo()?.ModelPath;
-        var config = _configLoader.Load(modelPath);
-        var configFilePath = ResolveConfigFilePath(modelPath);
-        var configFileContent = ReadFileText(configFilePath);
+        var configSnapshot = _configLoader.LoadSnapshot(modelPath);
+        var config = configSnapshot.Config;
         if (config == null)
         {
             return new FilteredEvaluationResult
@@ -53,8 +51,7 @@ public sealed class FilteredEvaluationService
                 ObjectType = modelObject.GetType().Name,
                 HasModelObject = true,
                 ConfigFileName = ConfigFileName,
-                ConfigFilePath = configFilePath,
-                ConfigFileContent = configFileContent,
+                ConfigFilePath = configSnapshot.ConfigPath,
                 FailureReason = "Config file was not found or could not be parsed.",
             };
         }
@@ -76,11 +73,9 @@ public sealed class FilteredEvaluationService
                 IsMatch = isMatch,
                 IntegerValue = isMatch ? config.TrueValue : config.FalseValue,
                 ConfigFileName = ConfigFileName,
-                ConfigFilePath = configFilePath,
-                ConfigFileContent = configFileContent,
+                ConfigFilePath = configSnapshot.ConfigPath,
                 TeklaFilterName = config.TeklaFilterName,
                 ResolvedTeklaFilterPath = resolvedFilterPath,
-                ResolvedTeklaFilterContent = ReadFileText(resolvedFilterPath),
                 FailureReason = isMatch || !string.IsNullOrWhiteSpace(resolvedFilterPath)
                     ? string.Empty
                     : "Tekla filter file was not found or did not include the object.",
@@ -98,8 +93,7 @@ public sealed class FilteredEvaluationService
             IsMatch = isValueMatch,
             IntegerValue = isValueMatch ? config.TrueValue : config.FalseValue,
             ConfigFileName = ConfigFileName,
-            ConfigFilePath = configFilePath,
-            ConfigFileContent = configFileContent,
+            ConfigFilePath = configSnapshot.ConfigPath,
             ReportProperty = config.ReportProperty,
             ExpectedValue = config.ExpectedValue,
             ActualValue = actualValue,
@@ -107,36 +101,6 @@ public sealed class FilteredEvaluationService
                 ? string.Empty
                 : "Configured report property was not available on the selected object.",
         };
-    }
-
-    private string ResolveConfigFilePath(string? modelPath)
-    {
-        foreach (var candidate in CustomConfigPaths.EnumerateCandidatePaths(ConfigFileName, modelPath))
-        {
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return string.Empty;
-    }
-
-    private static string ReadFileText(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-        {
-            return string.Empty;
-        }
-
-        try
-        {
-            return File.ReadAllText(path);
-        }
-        catch
-        {
-            return string.Empty;
-        }
     }
 
     private static string ReadReportProperty(ModelObject modelObject, string reportProperty)
