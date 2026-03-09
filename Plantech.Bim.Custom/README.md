@@ -37,3 +37,15 @@ For `CUSTOM.PT.Filtered01`:
 4. `XS_PROJECT`
 5. `XS_FIRM`
 6. `XS_SYSTEM`
+
+## Host
+
+`Plantech.Bim.Custom.Host` is a small interactive WPF executable for testing without loading the custom DLL into Tekla.
+
+Flow:
+
+1. start Tekla and open a model
+2. run `Plantech.Bim.Custom.Host.exe`
+3. click `Pick Object In Tekla`
+4. pick an object in Tekla
+5. inspect the evaluated result, config path, resolved filter path, and returned integer value

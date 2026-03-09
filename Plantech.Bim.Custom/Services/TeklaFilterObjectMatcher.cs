@@ -17,11 +17,18 @@ internal sealed class TeklaFilterObjectMatcher
 
     public bool IsMatch(string filterName, string? modelPath, int objectId)
     {
+        return TryMatch(filterName, modelPath, objectId, out _);
+    }
+
+    public bool TryMatch(string filterName, string? modelPath, int objectId, out string resolvedFilterPath)
+    {
+        resolvedFilterPath = string.Empty;
         if (!TryResolveTeklaFilterPath(filterName, modelPath, out var fullPath))
         {
             return false;
         }
 
+        resolvedFilterPath = fullPath;
         var objectIds = LoadObjectIds(fullPath);
         return objectIds.Contains(objectId);
     }
