@@ -1,6 +1,6 @@
 namespace Plantech.Bim.Custom.Configuration;
 
-internal sealed class CustomAttributeConfig
+internal sealed class CustomPropertyConfig
 {
     public string TeklaFilterName { get; set; } = string.Empty;
     public string ReportProperty { get; set; } = string.Empty;

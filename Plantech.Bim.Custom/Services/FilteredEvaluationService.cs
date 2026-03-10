@@ -10,7 +10,7 @@ public sealed class FilteredEvaluationService
 {
     private const string ConfigFileName = "filtered01.json";
 
-    private readonly CustomAttributeConfigLoader _configLoader = new(ConfigFileName);
+    private readonly CustomPropertyConfigLoader _configLoader = new(ConfigFileName);
     private readonly TeklaFilterObjectMatcher _filterMatcher = new();
     private static Model ModelInstance => LazyModelConnector.ModelInstance;
 
@@ -116,7 +116,7 @@ public sealed class FilteredEvaluationService
             : string.Empty;
     }
 
-    private static bool MatchConfiguredValue(string actualValue, CustomAttributeConfig config)
+    private static bool MatchConfiguredValue(string actualValue, CustomPropertyConfig config)
     {
         if (string.IsNullOrWhiteSpace(config.ReportProperty))
         {

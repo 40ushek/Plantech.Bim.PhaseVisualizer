@@ -4,15 +4,15 @@ JSON-driven Tekla custom property plugins with a small interactive host for fast
 
 ## What this project is
 
-`Plantech.Bim.Custom` is a test and pilot project for Tekla custom attributes.
+`Plantech.Bim.Custom` is a test and pilot project for Tekla custom properties.
 
-The current custom attribute is:
+The current custom property is:
 
 - `CUSTOM.PT.Filtered01`
 
 Its purpose is simple:
 
-- Tekla passes an object id to the custom attribute
+- Tekla passes an object id to the custom property
 - the plugin loads runtime settings from `filtered01.json`
 - the plugin checks whether the object matches the configured rule
 - the plugin returns an integer result such as `1` or `0`
@@ -25,7 +25,7 @@ The project supports two rule styles:
 ## Project layout
 
 - `Plantech.Bim.Custom`
-  The custom attribute library loaded by Tekla.
+  The custom property library loaded by Tekla.
 - `Plantech.Bim.Custom.Host`
   A lightweight interactive executable for debugging the same logic without deploying the custom DLL into Tekla.
 
@@ -146,5 +146,5 @@ The host is a debug tool. The plugin remains the runtime source of truth.
 ## Current implementation notes
 
 - The current plugin is intentionally small and focused on one pilot attribute.
-- The codebase is structured so that more custom attributes can be added later.
+- The codebase is structured so that more custom properties can be added later.
 - Runtime behavior and debug diagnostics are intentionally separated to protect performance.

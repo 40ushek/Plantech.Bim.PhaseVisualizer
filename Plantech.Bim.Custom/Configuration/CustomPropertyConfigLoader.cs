@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Plantech.Bim.Custom.Configuration;
 
-internal sealed class CustomAttributeConfigLoader
+internal sealed class CustomPropertyConfigLoader
 {
     private static readonly object SyncRoot = new();
     private static readonly TimeSpan HotCacheWindow = TimeSpan.FromSeconds(2);
@@ -14,14 +14,14 @@ internal sealed class CustomAttributeConfigLoader
     private string _cachedPath = string.Empty;
     private DateTime _cachedWriteTimeUtc = DateTime.MinValue;
     private DateTime _cachedLastValidationUtc = DateTime.MinValue;
-    private CustomAttributeConfig? _cachedConfig;
+    private CustomPropertyConfig? _cachedConfig;
 
-    public CustomAttributeConfigLoader(string configFileName)
+    public CustomPropertyConfigLoader(string configFileName)
     {
         _configFileName = configFileName ?? throw new ArgumentNullException(nameof(configFileName));
     }
 
-    public CustomAttributeConfig? Load(string? modelPath)
+    public CustomPropertyConfig? Load(string? modelPath)
     {
         return LoadSnapshot(modelPath).Config;
     }
@@ -79,7 +79,7 @@ internal sealed class CustomAttributeConfigLoader
                 return new ConfigSnapshot(_cachedPath, null);
             }
 
-            _cachedConfig = JsonConvert.DeserializeObject<CustomAttributeConfig>(json);
+            _cachedConfig = JsonConvert.DeserializeObject<CustomPropertyConfig>(json);
             _cachedModelPathKey = modelPathKey;
             _cachedPath = configPath;
             _cachedWriteTimeUtc = writeTimeUtc;
@@ -103,13 +103,13 @@ internal sealed class CustomAttributeConfigLoader
 
     internal readonly struct ConfigSnapshot
     {
-        public ConfigSnapshot(string configPath, CustomAttributeConfig? config)
+        public ConfigSnapshot(string configPath, CustomPropertyConfig? config)
         {
             ConfigPath = configPath ?? string.Empty;
             Config = config;
         }
 
         public string ConfigPath { get; }
-        public CustomAttributeConfig? Config { get; }
+        public CustomPropertyConfig? Config { get; }
     }
 }
