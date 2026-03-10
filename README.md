@@ -18,6 +18,7 @@ The tool supports:
 `Plantech.Bim.Custom` currently includes:
 - `CUSTOM.PT.Filtered01`
 - JSON-based runtime config (`filtered01.json`)
+- config storage in the same `PT_PhaseVisualizer` directory used by Phase Visualizer
 - Tekla filter-based matching through `.SObjGrp`
 - report property fallback matching
 - a debug host that calls the real plugin entry points for a picked object id

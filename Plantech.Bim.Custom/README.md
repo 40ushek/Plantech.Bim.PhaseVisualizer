@@ -44,10 +44,10 @@ For `CUSTOM.PT.Filtered01`, the runtime flow is:
 
 `filtered01.json` is resolved from the first existing path:
 
-1. `<ModelPath>/attributes/PT_Custom/filtered01.json`
-2. `<ModelPath>/PT_Custom/filtered01.json`
-3. `<XS_FIRM>/PT_Custom/filtered01.json`
-4. `<ApplicationBase>/PT_Custom/filtered01.json`
+1. `<ModelPath>/attributes/PT_PhaseVisualizer/filtered01.json`
+2. `<ModelPath>/PT_PhaseVisualizer/filtered01.json`
+3. `<XS_FIRM>/PT_PhaseVisualizer/filtered01.json`
+4. `<ApplicationBase>/PT_PhaseVisualizer/filtered01.json`
 
 ## Filter file lookup
 
@@ -112,8 +112,9 @@ The runtime path is optimized for large object collections.
 
 - Filter resolution path is cached in memory.
 - The set of matched object ids for a resolved filter file is cached in memory.
-- Filter cache is revalidated at most once every 2 seconds.
-- Revalidation checks the filter file write time before rebuilding the object id set.
+- Filter path resolution is revalidated at most once every 2 seconds.
+- The cached object id set is rebuilt after the hot window expires, even if the filter file itself did not change.
+- This is intentional because filter results depend on the current model state, not only on the `.SObjGrp` file contents.
 
 ### Diagnostics separation
 

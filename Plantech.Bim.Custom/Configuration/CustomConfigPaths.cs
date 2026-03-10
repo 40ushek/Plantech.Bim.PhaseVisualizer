@@ -7,7 +7,7 @@ namespace Plantech.Bim.Custom.Configuration;
 
 internal static class CustomConfigPaths
 {
-    internal const string ConfigDirectoryName = "PT_Custom";
+    internal const string ConfigDirectoryName = "PT_PhaseVisualizer";
 
     internal static IEnumerable<string> EnumerateCandidatePaths(string configFileName, string? modelPath)
     {
