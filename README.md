@@ -6,8 +6,8 @@ Tekla Structures tooling for configuration-driven visualization and custom attri
 
 - `Plantech.Bim.PhaseVisualizer` - main library/plugin logic.
 - `Plantech.Bim.PhaseVisualizer.Host` - host app for standalone testing.
-- `Plantech.Bim.Custom` - JSON-driven custom attribute prototype for Tekla.
-- `Plantech.Bim.Custom.Host` - interactive host for custom attribute debugging and object picking.
+- `Plantech.Bim.Custom` - JSON-driven custom property pilot for Tekla.
+- `Plantech.Bim.Custom.Host` - interactive host for custom property debugging and object picking.
 
 The tool supports:
 - host window mode,
@@ -19,7 +19,7 @@ The tool supports:
 - `CUSTOM.PT.Filtered01`
 - JSON-based runtime config (`filtered01.json`)
 - config storage in the same `PT_PhaseVisualizer` directory used by Phase Visualizer
-- Tekla filter-based matching through `.SObjGrp`
+- Tekla filter-based matching through `.SObjGrp` and `Operation.ObjectMatchesToFilter(...)`
 - report property fallback matching
 - a debug host that calls the real plugin entry points for a picked object id
 
@@ -57,6 +57,7 @@ Detailed documentation and behavior notes:
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_PHASE_VISUALIZER.md`
 - `Plantech.Bim.PhaseVisualizer/ROADMAP_APPLY_RULES.md`
 - `Plantech.Bim.Custom/README.md`
+- `Plantech.Bim.Custom/ROADMAP_CUSTOM.md`
 
 Repository-level docs:
 - `CONTRIBUTING.md`

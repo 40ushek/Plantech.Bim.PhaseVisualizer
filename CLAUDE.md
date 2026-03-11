@@ -147,6 +147,8 @@ Config file: `filtered01.json`. Resolved in priority order:
 3. `<XS_FIRM>/PT_PhaseVisualizer/filtered01.json`
 4. `<AppBase>/PT_PhaseVisualizer/filtered01.json`
 
+If `XS_FIRM` contains multiple directories, all configured paths are checked in order.
+
 Config schema (`CustomPropertyConfig`):
 
 | Field | Purpose |
@@ -156,6 +158,8 @@ Config schema (`CustomPropertyConfig`):
 | `ExpectedValue` | String to compare against the report property value |
 | `TrueValue` / `FalseValue` | Integer values returned when match succeeds/fails (default: 1/0) |
 | `IgnoreCase` | Whether string comparison is case-insensitive (default: true) |
+
+Filter matching uses `Operation.ObjectMatchesToFilter(...)` with a cached `FilterExpression`. The runtime does not build a model-wide `HashSet<int>` of matching objects.
 
 ### Legacy Code
 

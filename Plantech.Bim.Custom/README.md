@@ -36,7 +36,7 @@ For `CUSTOM.PT.Filtered01`, the runtime flow is:
 1. Tekla calls `GetIntegerProperty(objectId)`.
 2. The plugin resolves the Tekla model object by id.
 3. The plugin loads a cached runtime config snapshot from `filtered01.json`.
-4. If `teklaFilterName` is configured, the plugin resolves the `.SObjGrp` filter and checks whether the object id exists in the cached filter result set.
+4. If `teklaFilterName` is configured, the plugin resolves the `.SObjGrp` filter, caches its `FilterExpression`, and checks the current object with `Operation.ObjectMatchesToFilter(...)`.
 5. Otherwise, the plugin reads the configured report property and compares it with `expectedValue`.
 6. The plugin returns `trueValue` or `falseValue`.
 
@@ -48,6 +48,8 @@ For `CUSTOM.PT.Filtered01`, the runtime flow is:
 2. `<ModelPath>/PT_PhaseVisualizer/filtered01.json`
 3. `<XS_FIRM>/PT_PhaseVisualizer/filtered01.json`
 4. `<ApplicationBase>/PT_PhaseVisualizer/filtered01.json`
+
+If `XS_FIRM` contains multiple paths, all configured directories are checked in order.
 
 ## Filter file lookup
 
@@ -111,10 +113,9 @@ The runtime path is optimized for large object collections.
 ### Filter cache
 
 - Filter resolution path is cached in memory.
-- The set of matched object ids for a resolved filter file is cached in memory.
-- Filter path resolution is revalidated at most once every 2 seconds.
-- The cached object id set is rebuilt after the hot window expires, even if the filter file itself did not change.
-- This is intentional because filter results depend on the current model state, not only on the `.SObjGrp` file contents.
+- Parsed `FilterExpression` instances are cached in memory.
+- Filter path resolution and expression reload are revalidated at most once every 2 seconds.
+- Object matching is evaluated against the current `ModelObject`; the runtime does not cache a full model-wide result set.
 
 ### Diagnostics separation
 
