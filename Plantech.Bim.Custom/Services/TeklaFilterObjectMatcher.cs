@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using Tekla.Structures.Filtering;
 using Tekla.Structures.Model;
+using Tekla.Structures.Model.Operations;
 
 namespace Plantech.Bim.Custom.Services;
 
@@ -14,93 +15,101 @@ internal sealed class TeklaFilterObjectMatcher
     private const string TeklaViewFilterExtension = ".SObjGrp";
     private static readonly TimeSpan HotCacheWindow = TimeSpan.FromSeconds(2);
     private static readonly object SyncRoot = new();
-    private static readonly Dictionary<string, CacheEntry> Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, ExpressionCacheEntry> ExpressionCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, PathCacheEntry> PathCache = new(StringComparer.OrdinalIgnoreCase);
 
-    public bool IsMatch(string filterName, string? modelPath, int objectId)
+    public bool IsMatch(string filterName, string? modelPath, ModelObject modelObject)
     {
-        return TryMatch(filterName, modelPath, objectId, out _);
+        return TryMatch(filterName, modelPath, modelObject, out _, out _);
     }
 
-    public bool TryMatch(string filterName, string? modelPath, int objectId, out string resolvedFilterPath)
+    public bool TryMatch(
+        string filterName,
+        string? modelPath,
+        ModelObject modelObject,
+        out string resolvedFilterPath,
+        out bool usedExpressionCache)
     {
         resolvedFilterPath = string.Empty;
+        usedExpressionCache = false;
         if (!TryResolveTeklaFilterPath(filterName, modelPath, out var fullPath))
         {
             return false;
         }
 
         resolvedFilterPath = fullPath;
-        var objectIds = LoadObjectIds(fullPath);
-        return objectIds.Contains(objectId);
+        if (!TryLoadExpression(fullPath, out var expression, out usedExpressionCache))
+        {
+            return false;
+        }
+
+        try
+        {
+            return Operation.ObjectMatchesToFilter(modelObject, expression);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
-    private static HashSet<int> LoadObjectIds(string fullPath)
+    private static bool TryLoadExpression(
+        string fullPath,
+        out FilterExpression expression,
+        out bool usedExpressionCache)
     {
+        expression = null!;
+        usedExpressionCache = false;
         var nowUtc = DateTime.UtcNow;
 
         lock (SyncRoot)
         {
-            if (Cache.TryGetValue(fullPath, out var cached)
+            if (ExpressionCache.TryGetValue(fullPath, out var cached)
                 && nowUtc - cached.LastValidationUtc <= HotCacheWindow)
             {
-                return cached.ObjectIds;
+                expression = cached.Expression;
+                usedExpressionCache = true;
+                return true;
             }
         }
 
-        var loaded = BuildObjectIdSet(fullPath);
         var writeTimeUtc = File.GetLastWriteTimeUtc(fullPath);
+        lock (SyncRoot)
+        {
+            if (ExpressionCache.TryGetValue(fullPath, out var cached)
+                && cached.WriteTimeUtc == writeTimeUtc)
+            {
+                cached.LastValidationUtc = nowUtc;
+                expression = cached.Expression;
+                usedExpressionCache = true;
+                return true;
+            }
+        }
+
+        if (!TryBuildExpression(fullPath, out expression))
+        {
+            return false;
+        }
 
         lock (SyncRoot)
         {
-            Cache[fullPath] = new CacheEntry(writeTimeUtc, nowUtc, loaded);
-            return loaded;
+            ExpressionCache[fullPath] = new ExpressionCacheEntry(writeTimeUtc, nowUtc, expression);
+            return true;
         }
     }
 
-    private static HashSet<int> BuildObjectIdSet(string fullPath)
+    private static bool TryBuildExpression(string fullPath, out FilterExpression expression)
     {
-        var result = new HashSet<int>();
-        var selector = LazyModelConnector.ModelInstance.GetModelObjectSelector();
-        if (selector == null)
-        {
-            return result;
-        }
-
-        var previousAutoFetch = ModelObjectEnumerator.AutoFetch;
-        ModelObjectEnumerator.AutoFetch = false;
+        expression = null!;
         try
         {
             var filter = new Filter(fullPath, CultureInfo.InvariantCulture);
-            var expression = filter.FilterExpression;
-            if (expression == null)
-            {
-                return result;
-            }
-
-            var objects = selector.GetObjectsByFilter(expression);
-            if (objects == null)
-            {
-                return result;
-            }
-
-            while (objects.MoveNext())
-            {
-                if (objects.Current is ModelObject modelObject)
-                {
-                    result.Add(modelObject.Identifier.ID);
-                }
-            }
-
-            return result;
+            expression = filter.FilterExpression!;
+            return expression != null;
         }
         catch
         {
-            return new HashSet<int>();
-        }
-        finally
-        {
-            ModelObjectEnumerator.AutoFetch = previousAutoFetch;
+            return false;
         }
     }
 
@@ -179,18 +188,18 @@ internal sealed class TeklaFilterObjectMatcher
         }
     }
 
-    private sealed class CacheEntry
+    private sealed class ExpressionCacheEntry
     {
-        public CacheEntry(DateTime writeTimeUtc, DateTime lastAccessUtc, HashSet<int> objectIds)
+        public ExpressionCacheEntry(DateTime writeTimeUtc, DateTime lastValidationUtc, FilterExpression expression)
         {
             WriteTimeUtc = writeTimeUtc;
-            LastValidationUtc = lastAccessUtc;
-            ObjectIds = objectIds;
+            LastValidationUtc = lastValidationUtc;
+            Expression = expression;
         }
 
         public DateTime WriteTimeUtc { get; }
         public DateTime LastValidationUtc { get; set; }
-        public HashSet<int> ObjectIds { get; }
+        public FilterExpression Expression { get; }
     }
 
     private sealed class PathCacheEntry

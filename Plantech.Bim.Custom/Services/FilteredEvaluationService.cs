@@ -61,8 +61,9 @@ public sealed class FilteredEvaluationService
             var isMatch = _filterMatcher.TryMatch(
                 config.TeklaFilterName,
                 modelPath,
-                modelObject.Identifier.ID,
-                out var resolvedFilterPath);
+                modelObject,
+                out var resolvedFilterPath,
+                out var usedExpressionCache);
 
             return new FilteredEvaluationResult
             {
@@ -76,6 +77,7 @@ public sealed class FilteredEvaluationService
                 ConfigFilePath = configSnapshot.ConfigPath,
                 TeklaFilterName = config.TeklaFilterName,
                 ResolvedTeklaFilterPath = resolvedFilterPath,
+                UsedTeklaFilterExpressionCache = usedExpressionCache,
                 FailureReason = isMatch || !string.IsNullOrWhiteSpace(resolvedFilterPath)
                     ? string.Empty
                     : "Tekla filter file was not found or did not include the object.",
