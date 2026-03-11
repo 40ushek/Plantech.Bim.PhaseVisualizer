@@ -11,7 +11,7 @@ internal class Filtered : CustomBase, ICustomPropertyPlugin
 {
     private static readonly FilteredEvaluationService EvaluationService = new();
 
-    public double GetDoubleProperty(int objectId) => GetIntegerProperty(objectId);
+    public double GetDoubleProperty(int objectId) => 0;
     public int GetIntegerProperty(int objectId) => EvaluationService.Evaluate(objectId).IntegerValue;
-    public string GetStringProperty(int objectId) => GetIntegerProperty(objectId).ToString();
+    public string GetStringProperty(int objectId) => string.Empty;
 }
