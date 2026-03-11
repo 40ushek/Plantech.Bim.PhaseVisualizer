@@ -11,14 +11,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Visual Studio / MSBuild project. There is no Makefile or npm.
 
 ```bash
-# Build (from repo root or solution directory)
+# Build PhaseVisualizer solution (from repo root or solution directory)
 dotnet build Plantech.Bim.sln
 
-# Release build
+# Build Custom property plugin solution (separate solution)
+dotnet build Plantech.Bim.Custom/Plantech.Bim.Custom.sln
+
+# Release builds
 dotnet build Plantech.Bim.sln -c Release
+dotnet build Plantech.Bim.Custom/Plantech.Bim.Custom.sln -c Release
 
 # Single project
 dotnet build Plantech.Bim.PhaseVisualizer/Plantech.Bim.PhaseVisualizer.csproj
+dotnet build Plantech.Bim.Custom/Plantech.Bim.Custom.csproj
 ```
 
 There are no automated tests in the repository yet (test projects not yet added).
@@ -113,6 +118,44 @@ User row state (selected rows, editable input values) and named presets are stor
 ### Host Project
 
 `Plantech.Bim.PhaseVisualizer.Host` is a WinExe shell that references the main library. It exists for manual testing without a full Tekla Structures installation. Place test config at `<Host output>/.plantech/phase-visualizer.json`.
+
+## Plantech.Bim.Custom
+
+A separate Tekla custom property plugin in its own solution (`Plantech.Bim.Custom/Plantech.Bim.Custom.sln`). Lives under the `Plantech.Bim.Custom.*` namespace.
+
+### Purpose
+
+Implements `ICustomPropertyPlugin` (MEF export via `System.ComponentModel.Composition`) exposing the property `CUSTOM.PT.Filtered01` as an integer. For each model object, it evaluates either:
+- A **Tekla filter** match (`TeklaFilterName` set in config) → returns `TrueValue`/`FalseValue`
+- A **report property** string match (`ReportProperty` + `ExpectedValue` in config) → returns `TrueValue`/`FalseValue`
+
+### Layer Structure
+
+```
+Plugins/         ← Filtered.cs (MEF entry point), CustomBase.cs
+Services/        ← FilteredEvaluationService, FilteredEvaluationDiagnosticsService, TeklaFilterObjectMatcher
+Configuration/   ← CustomPropertyConfig, CustomPropertyConfigLoader (with 2-second hot cache), CustomConfigPaths
+Common/          ← LazyModelConnector, TeklaAttributeDirectories
+Debug/           ← FilteredPluginDebugRunner (manual testing without Tekla)
+```
+
+### Config Loading
+
+Config file: `filtered01.json`. Resolved in priority order:
+1. `<model>/attributes/PT_PhaseVisualizer/filtered01.json`
+2. `<model>/PT_PhaseVisualizer/filtered01.json`
+3. `<XS_FIRM>/PT_PhaseVisualizer/filtered01.json`
+4. `<AppBase>/PT_PhaseVisualizer/filtered01.json`
+
+Config schema (`CustomPropertyConfig`):
+
+| Field | Purpose |
+|---|---|
+| `TeklaFilterName` | Name of a Tekla filter file to test object membership (mutually exclusive with report property path) |
+| `ReportProperty` | Report property name to read from the object |
+| `ExpectedValue` | String to compare against the report property value |
+| `TrueValue` / `FalseValue` | Integer values returned when match succeeds/fails (default: 1/0) |
+| `IgnoreCase` | Whether string comparison is case-insensitive (default: true) |
 
 ### Legacy Code
 

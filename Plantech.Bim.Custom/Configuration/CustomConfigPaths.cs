@@ -22,8 +22,7 @@ internal static class CustomConfigPaths
             yield return Path.Combine(modelPath, ConfigDirectoryName, configFileName);
         }
 
-        var firmRoot = GetAdvancedOptionDirectory("XS_FIRM");
-        if (!string.IsNullOrWhiteSpace(firmRoot))
+        foreach (var firmRoot in GetAdvancedOptionDirectories("XS_FIRM"))
         {
             yield return Path.Combine(firmRoot, ConfigDirectoryName, configFileName);
         }
@@ -35,30 +34,27 @@ internal static class CustomConfigPaths
         }
     }
 
-    private static string? GetAdvancedOptionDirectory(string optionName)
+    private static IEnumerable<string> GetAdvancedOptionDirectories(string optionName)
     {
+        string raw;
         try
         {
-            var raw = string.Empty;
+            raw = string.Empty;
             TeklaStructuresSettings.GetAdvancedOption(optionName, ref raw);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return null;
-            }
-
-            foreach (var token in raw.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                var candidate = token.Trim().Trim('"');
-                if (!string.IsNullOrWhiteSpace(candidate))
-                {
-                    return candidate;
-                }
-            }
         }
         catch
         {
+            yield break;
         }
 
-        return null;
+        if (string.IsNullOrWhiteSpace(raw))
+            yield break;
+
+        foreach (var token in raw.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var candidate = token.Trim().Trim('"');
+            if (!string.IsNullOrWhiteSpace(candidate))
+                yield return candidate;
+        }
     }
 }

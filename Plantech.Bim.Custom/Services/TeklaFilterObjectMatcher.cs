@@ -13,6 +13,7 @@ namespace Plantech.Bim.Custom.Services;
 internal sealed class TeklaFilterObjectMatcher
 {
     private const string TeklaViewFilterExtension = ".SObjGrp";
+    private const int MaxCacheSize = 1024;
     private static readonly TimeSpan HotCacheWindow = TimeSpan.FromSeconds(2);
     private static readonly object SyncRoot = new();
     private static readonly Dictionary<string, ExpressionCacheEntry> ExpressionCache = new(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +94,8 @@ internal sealed class TeklaFilterObjectMatcher
 
         lock (SyncRoot)
         {
+            if (ExpressionCache.Count >= MaxCacheSize)
+                ExpressionCache.Clear();
             ExpressionCache[fullPath] = new ExpressionCacheEntry(writeTimeUtc, nowUtc, expression);
             return true;
         }
@@ -179,6 +182,8 @@ internal sealed class TeklaFilterObjectMatcher
     {
         lock (SyncRoot)
         {
+            if (PathCache.Count >= MaxCacheSize)
+                PathCache.Clear();
             PathCache[cacheKey] = new PathCacheEntry
             {
                 ResolvedPath = resolvedPath,

@@ -14,6 +14,21 @@ public sealed class FilteredEvaluationService
     private readonly TeklaFilterObjectMatcher _filterMatcher = new();
     private static Model ModelInstance => LazyModelConnector.ModelInstance;
 
+    private static readonly TimeSpan ModelPathCacheWindow = TimeSpan.FromSeconds(2);
+    private string? _cachedModelPath;
+    private DateTime _cachedModelPathUtc = DateTime.MinValue;
+
+    private string? GetModelPath()
+    {
+        var nowUtc = DateTime.UtcNow;
+        if (nowUtc - _cachedModelPathUtc > ModelPathCacheWindow)
+        {
+            _cachedModelPath = ModelInstance.GetInfo()?.ModelPath;
+            _cachedModelPathUtc = nowUtc;
+        }
+        return _cachedModelPath;
+    }
+
     public static bool IsTeklaConnected()
     {
         try
@@ -40,7 +55,7 @@ public sealed class FilteredEvaluationService
             };
         }
 
-        var modelPath = ModelInstance.GetInfo()?.ModelPath;
+        var modelPath = GetModelPath();
         var configSnapshot = _configLoader.LoadSnapshot(modelPath);
         var config = configSnapshot.Config;
         if (config == null)
