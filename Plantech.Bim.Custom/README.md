@@ -36,7 +36,7 @@ For `CUSTOM.PT.Filtered01`, the runtime flow is:
 1. Tekla calls `GetIntegerProperty(objectId)`.
 2. The plugin resolves the Tekla model object by id.
 3. The plugin loads a cached runtime config snapshot from `filtered01.json`.
-4. If `teklaFilterName` is configured, the plugin resolves the `.SObjGrp` filter, caches its `FilterExpression`, and checks the current object with `Operation.ObjectMatchesToFilter(...)`.
+4. If `teklaFilterName` is configured, the plugin resolves the `.SObjGrp` filter path and checks the current object with `Operation.ObjectMatchesToFilter(...)`.
 5. Otherwise, the plugin reads the configured report property and compares it with `expectedValue`.
 6. The plugin returns `trueValue` or `falseValue`.
 
@@ -113,8 +113,8 @@ The runtime path is optimized for large object collections.
 ### Filter cache
 
 - Filter resolution path is cached in memory.
-- Parsed `FilterExpression` instances are cached in memory.
-- Filter path resolution and expression reload are revalidated at most once every 2 seconds.
+- Resolved filter paths are cached in memory.
+- Filter path resolution is revalidated at most once every 2 seconds.
 - Object matching is evaluated against the current `ModelObject`; the runtime does not cache a full model-wide result set.
 
 ### Diagnostics separation

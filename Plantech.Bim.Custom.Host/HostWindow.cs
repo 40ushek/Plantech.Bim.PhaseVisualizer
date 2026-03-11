@@ -158,7 +158,7 @@ internal sealed class HostWindow : Window
         sb.AppendLine($"ConfigFilePath: {evaluation.ConfigFilePath}");
         sb.AppendLine($"TeklaFilterName: {evaluation.TeklaFilterName}");
         sb.AppendLine($"ResolvedTeklaFilterPath: {evaluation.ResolvedTeklaFilterPath}");
-        sb.AppendLine($"UsedTeklaFilterExpressionCache: {evaluation.UsedTeklaFilterExpressionCache}");
+        sb.AppendLine($"UsedTeklaFilterPathCache: {evaluation.UsedTeklaFilterPathCache}");
         sb.AppendLine($"FailureReason: {evaluation.FailureReason}");
         sb.AppendLine();
         sb.AppendLine("=== Config Content ===");

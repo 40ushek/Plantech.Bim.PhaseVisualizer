@@ -78,7 +78,7 @@ public sealed class FilteredEvaluationService
                 modelPath,
                 modelObject,
                 out var resolvedFilterPath,
-                out var usedExpressionCache);
+                out var usedPathCache);
 
             return new FilteredEvaluationResult
             {
@@ -92,7 +92,7 @@ public sealed class FilteredEvaluationService
                 ConfigFilePath = configSnapshot.ConfigPath,
                 TeklaFilterName = config.TeklaFilterName,
                 ResolvedTeklaFilterPath = resolvedFilterPath,
-                UsedTeklaFilterExpressionCache = usedExpressionCache,
+                UsedTeklaFilterPathCache = usedPathCache,
                 FailureReason = isMatch || !string.IsNullOrWhiteSpace(resolvedFilterPath)
                     ? string.Empty
                     : "Tekla filter file was not found or did not include the object.",

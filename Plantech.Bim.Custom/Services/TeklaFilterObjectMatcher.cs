@@ -1,10 +1,8 @@
 using Plantech.Bim.Custom.Common;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using Tekla.Structures.Filtering;
 using Tekla.Structures.Model;
 using Tekla.Structures.Model.Operations;
 
@@ -16,7 +14,6 @@ internal sealed class TeklaFilterObjectMatcher
     private const int MaxCacheSize = 1024;
     private static readonly TimeSpan HotCacheWindow = TimeSpan.FromSeconds(2);
     private static readonly object SyncRoot = new();
-    private static readonly Dictionary<string, ExpressionCacheEntry> ExpressionCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, PathCacheEntry> PathCache = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsMatch(string filterName, string? modelPath, ModelObject modelObject)
@@ -29,24 +26,18 @@ internal sealed class TeklaFilterObjectMatcher
         string? modelPath,
         ModelObject modelObject,
         out string resolvedFilterPath,
-        out bool usedExpressionCache)
+        out bool usedPathCache)
     {
         resolvedFilterPath = string.Empty;
-        usedExpressionCache = false;
-        if (!TryResolveTeklaFilterPath(filterName, modelPath, out var fullPath))
+        if (!TryResolveTeklaFilterPath(filterName, modelPath, out var fullPath, out usedPathCache))
         {
             return false;
         }
 
         resolvedFilterPath = fullPath;
-        if (!TryLoadExpression(fullPath, out var expression, out usedExpressionCache))
-        {
-            return false;
-        }
-
         try
         {
-            return Operation.ObjectMatchesToFilter(modelObject, expression);
+            return Operation.ObjectMatchesToFilter(modelObject, BuildRuntimeFilterName(filterName, fullPath));
         }
         catch
         {
@@ -54,71 +45,14 @@ internal sealed class TeklaFilterObjectMatcher
         }
     }
 
-    private static bool TryLoadExpression(
-        string fullPath,
-        out FilterExpression expression,
-        out bool usedExpressionCache)
-    {
-        expression = null!;
-        usedExpressionCache = false;
-        var nowUtc = DateTime.UtcNow;
-
-        lock (SyncRoot)
-        {
-            if (ExpressionCache.TryGetValue(fullPath, out var cached)
-                && nowUtc - cached.LastValidationUtc <= HotCacheWindow)
-            {
-                expression = cached.Expression;
-                usedExpressionCache = true;
-                return true;
-            }
-        }
-
-        var writeTimeUtc = File.GetLastWriteTimeUtc(fullPath);
-        lock (SyncRoot)
-        {
-            if (ExpressionCache.TryGetValue(fullPath, out var cached)
-                && cached.WriteTimeUtc == writeTimeUtc)
-            {
-                cached.LastValidationUtc = nowUtc;
-                expression = cached.Expression;
-                usedExpressionCache = true;
-                return true;
-            }
-        }
-
-        if (!TryBuildExpression(fullPath, out expression))
-        {
-            return false;
-        }
-
-        lock (SyncRoot)
-        {
-            if (ExpressionCache.Count >= MaxCacheSize)
-                ExpressionCache.Clear();
-            ExpressionCache[fullPath] = new ExpressionCacheEntry(writeTimeUtc, nowUtc, expression);
-            return true;
-        }
-    }
-
-    private static bool TryBuildExpression(string fullPath, out FilterExpression expression)
-    {
-        expression = null!;
-        try
-        {
-            var filter = new Filter(fullPath, CultureInfo.InvariantCulture);
-            expression = filter.FilterExpression!;
-            return expression != null;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool TryResolveTeklaFilterPath(string filterName, string? modelPath, out string fullPath)
+    private static bool TryResolveTeklaFilterPath(
+        string filterName,
+        string? modelPath,
+        out string fullPath,
+        out bool usedPathCache)
     {
         fullPath = string.Empty;
+        usedPathCache = false;
         if (string.IsNullOrWhiteSpace(filterName))
         {
             return false;
@@ -132,6 +66,7 @@ internal sealed class TeklaFilterObjectMatcher
                 && nowUtc - cached.LastValidationUtc <= HotCacheWindow)
             {
                 fullPath = cached.ResolvedPath;
+                usedPathCache = true;
                 return cached.Found;
             }
         }
@@ -178,6 +113,18 @@ internal sealed class TeklaFilterObjectMatcher
         return FormattableString.Invariant($"{modelPath?.Trim() ?? string.Empty}|{filterName.Trim()}");
     }
 
+    private static string BuildRuntimeFilterName(string filterName, string resolvedPath)
+    {
+        if (Path.IsPathRooted(filterName))
+        {
+            return Path.GetFileName(resolvedPath);
+        }
+
+        return Path.HasExtension(filterName)
+            ? filterName
+            : filterName + TeklaViewFilterExtension;
+    }
+
     private static void UpdatePathCache(string cacheKey, DateTime nowUtc, string resolvedPath, bool found)
     {
         lock (SyncRoot)
@@ -191,20 +138,6 @@ internal sealed class TeklaFilterObjectMatcher
                 LastValidationUtc = nowUtc,
             };
         }
-    }
-
-    private sealed class ExpressionCacheEntry
-    {
-        public ExpressionCacheEntry(DateTime writeTimeUtc, DateTime lastValidationUtc, FilterExpression expression)
-        {
-            WriteTimeUtc = writeTimeUtc;
-            LastValidationUtc = lastValidationUtc;
-            Expression = expression;
-        }
-
-        public DateTime WriteTimeUtc { get; }
-        public DateTime LastValidationUtc { get; set; }
-        public FilterExpression Expression { get; }
     }
 
     private sealed class PathCacheEntry

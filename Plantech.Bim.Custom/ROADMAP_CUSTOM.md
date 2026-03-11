@@ -4,7 +4,7 @@
 
 - `CUSTOM.PT.Filtered01` is implemented as a pilot custom property.
 - Runtime settings are loaded from `filtered01.json` in the shared `PT_PhaseVisualizer` directory.
-- Filter matching uses `Operation.ObjectMatchesToFilter(...)` with a cached `FilterExpression`.
+- Filter matching uses `Operation.ObjectMatchesToFilter(...)` with cached filter path resolution.
 - The host project is available for interactive debugging against a live Tekla model.
 
 ## Near-Term Direction

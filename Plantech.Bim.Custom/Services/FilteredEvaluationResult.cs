@@ -14,7 +14,7 @@ public sealed class FilteredEvaluationResult
     public string TeklaFilterName { get; set; } = string.Empty;
     public string ResolvedTeklaFilterPath { get; set; } = string.Empty;
     public string ResolvedTeklaFilterContent { get; set; } = string.Empty;
-    public bool UsedTeklaFilterExpressionCache { get; set; }
+    public bool UsedTeklaFilterPathCache { get; set; }
     public string ReportProperty { get; set; } = string.Empty;
     public string ExpectedValue { get; set; } = string.Empty;
     public string ActualValue { get; set; } = string.Empty;
