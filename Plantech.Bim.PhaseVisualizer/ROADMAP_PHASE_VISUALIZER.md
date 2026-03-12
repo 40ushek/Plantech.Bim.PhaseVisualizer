@@ -58,7 +58,7 @@ Current editable schema:
 - `editable: true`
 - For model-targeted filters: `targetObjectType + targetAttribute`
 - For built-in criteria flags: `targetAttribute` only (for example `exclude_gratings`, `exclude_existing`).
-- For Tekla file filters: `teklaFilterName` (boolean toggle column, AND-combined in apply pipeline).
+- For Tekla file filters: `teklaFilterName` (boolean toggle column, phase-local inside the selected phase branch).
 
 Supported `objectType` / `targetObjectType` values:
 

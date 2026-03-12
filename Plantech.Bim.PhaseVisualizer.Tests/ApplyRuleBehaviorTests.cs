@@ -1,7 +1,11 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
 using Plantech.Bim.PhaseVisualizer.Rules;
 using Plantech.Bim.PhaseVisualizer.Services;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using Tekla.Structures.Filtering;
 using Xunit;
 
 namespace Plantech.Bim.PhaseVisualizer.Tests;
@@ -285,5 +289,107 @@ public sealed class ApplyRuleBehaviorTests
 
         Assert.NotNull(result);
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void PhaseFilterExpressionBuilder_KeepsTeklaFilterScopedToTheEnabledPhase()
+    {
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "PhaseVisualizerTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDirectory);
+        var filterPath = Path.Combine(tempDirectory, "standard.SObjGrp");
+        File.WriteAllText(
+            filterPath,
+            """
+            TITLE_OBJECT_GROUP
+            {
+                Version= 1.05
+                Count= 2
+                SECTION_OBJECT_GROUP
+                {
+                    0
+                    1
+                    co_part
+                    proNAME
+                    albl_Name
+                    ==
+                    albl_Equals
+                    BEAM
+                    0
+                    &&
+                }
+                SECTION_OBJECT_GROUP
+                {
+                    0
+                    1
+                    co_part
+                    proCLASS
+                    albl_Class
+                    ==
+                    albl_Equals
+                    2
+                    0
+                    &&
+                }
+            }
+            """);
+
+        try
+        {
+            var builder = new PhaseFilterExpressionBuilder();
+            var selection = new[]
+            {
+                new PhaseSelectionCriteria
+                {
+                    PhaseNumber = 1,
+                    AttributeFilters = new List<PhaseAttributeFilter>
+                    {
+                        new()
+                        {
+                            ValueType = PhaseValueType.Boolean,
+                            Value = "true",
+                            TeklaFilterName = filterPath,
+                        },
+                    },
+                },
+                new PhaseSelectionCriteria
+                {
+                    PhaseNumber = 2,
+                    AttributeFilters = new List<PhaseAttributeFilter>(),
+                },
+            };
+
+            var result = builder.Build(selection, out var diagnostics);
+
+            Assert.DoesNotContain(
+                diagnostics,
+                d => d.IndexOf("WARN:", StringComparison.OrdinalIgnoreCase) >= 0);
+            Assert.Equal(2, result.Count);
+
+            var firstPhaseGroup = Assert.IsType<BinaryFilterExpressionCollection>(GetBinaryItemExpression(result[0]));
+            var secondPhaseGroup = Assert.IsType<BinaryFilterExpressionCollection>(GetBinaryItemExpression(result[1]));
+
+            Assert.Equal(2, firstPhaseGroup.Count);
+            Assert.Single(secondPhaseGroup);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDirectory))
+            {
+                Directory.Delete(tempDirectory, recursive: true);
+            }
+        }
+    }
+
+    private static FilterExpression GetBinaryItemExpression(BinaryFilterExpressionItem item)
+    {
+        var member = typeof(BinaryFilterExpressionItem).GetProperty("FilterExpression", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? (MemberInfo?)typeof(BinaryFilterExpressionItem).GetField("<FilterExpression>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        return member switch
+        {
+            PropertyInfo property => Assert.IsAssignableFrom<FilterExpression>(property.GetValue(item)),
+            FieldInfo field => Assert.IsAssignableFrom<FilterExpression>(field.GetValue(item)),
+            _ => throw new InvalidOperationException("Could not read FilterExpression from BinaryFilterExpressionItem."),
+        };
     }
 }

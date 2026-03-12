@@ -189,7 +189,7 @@ You can attach an existing Tekla object group filter (`.SObjGrp`) to a boolean e
 
 Behavior:
 - The file-filter branch is applied only when the column value is `true`.
-- `teklaFilterName` is merged with generated phase/attribute criteria using `AND`.
+- `teklaFilterName` is merged inside the phase group where the editable boolean column is enabled.
 - `teklaFilterNegate` is optional (default: `false` when omitted).
 - If `teklaFilterNegate=true`, the loaded Tekla filter expression is inverted (`NOT`) before AND-merge.
 - `teklaFilterName` can be:
