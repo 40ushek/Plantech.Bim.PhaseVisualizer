@@ -198,3 +198,10 @@ Note:
 
 1. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
 2. Execute **M8 typed editable operations** if priority remains unchanged.
+
+## Future UX Idea
+
+- Support multiple config profiles in `PT_PhaseVisualizer`, for example `default.phase-visualizer.json`, `production.phase-visualizer.json`, `erection.phase-visualizer.json`.
+- Add a `ComboBox` in the UI that lists profile names without the technical file suffix.
+- When the active profile changes, fully reload the table from the selected config and use state scoped to that config.
+- Remember the last selected profile for the current user.
