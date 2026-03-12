@@ -185,6 +185,7 @@ Done:
 - Some template/system filters (for example certain `standard.SObjGrp` variants with empty template operands) may fail to parse via `Filter(fullFileName, ...)`; such filters are currently logged and ignored in composed apply expression.
 - `teklaFilterName` currently supports object-group selection filters (`.SObjGrp`) only; representation/view filters are intentionally out of scope for this pipeline.
 - Multi-phase selection still uses a root `OR` collection over phase groups. Keep this for now because the generated Tekla filter is working correctly; only revisit root-level flattening if a real bracket-depth limit is hit in Tekla.
+- Per-profile local state is currently keyed by profile name, not by config content fingerprint. If a profile file changes in place, the old state/layout/presets can still be loaded best-effort against the new config shape.
 
 Note:
 - Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
@@ -201,6 +202,7 @@ Note:
 
 1. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
 2. Execute **M8 typed editable operations** if priority remains unchanged.
+3. Add **config fingerprint** to local state/session flow so profile state can be invalidated or partially reset when the underlying config file changes without a profile rename.
 
 ## Current UX Notes
 
@@ -208,3 +210,12 @@ Note:
 - The UI `ComboBox` shows display names without the technical suffix.
 - Profile switch performs a full reload and uses state scoped to the selected profile.
 - The last selected profile is remembered per user.
+
+## Config Fingerprint Follow-Up
+
+- Add a stable fingerprint for the active config profile, for example a normalized content hash.
+- Persist that fingerprint alongside local `state.<profile>.json`.
+- On load:
+  - if fingerprint matches, reuse state normally;
+  - if fingerprint changed, either reset state fully or keep only safe parts (for example row values) and drop layout/presets.
+- This should prevent stale local state from silently surviving a config edit when the profile file name stays the same.
