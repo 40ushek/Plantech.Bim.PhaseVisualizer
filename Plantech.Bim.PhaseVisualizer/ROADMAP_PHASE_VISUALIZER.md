@@ -181,6 +181,7 @@ Done:
 - In Tekla version mismatch scenarios (for example plugin built with TS2021 API and loaded in TS2025), active-view access can fail at runtime; this is now visible in logs via structured apply failure details.
 - Some template/system filters (for example certain `standard.SObjGrp` variants with empty template operands) may fail to parse via `Filter(fullFileName, ...)`; such filters are currently logged and ignored in composed apply expression.
 - `teklaFilterName` currently supports object-group selection filters (`.SObjGrp`) only; representation/view filters are intentionally out of scope for this pipeline.
+- Multi-phase selection still uses a root `OR` collection over phase groups. Keep this for now because the generated Tekla filter is working correctly; only revisit root-level flattening if a real bracket-depth limit is hit in Tekla.
 
 Note:
 - Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
