@@ -24,20 +24,26 @@ internal sealed class PhaseContextLoadController
         _log = log ?? throw new ArgumentNullException(nameof(log));
     }
 
-    public string ResolveStateFilePath()
+    public PhaseRuntimeSelection ResolveRuntimeSelection(string? selectedProfileKey)
     {
-        return _controller.ResolveStateFilePath(_teklaContext, _log) ?? string.Empty;
+        return _controller.ResolveRuntimeSelection(_teklaContext, selectedProfileKey, _log);
     }
 
     public PhaseContextLoadResult Resolve(
+        PhaseRuntimeSelection runtimeSelection,
         bool forceReloadFromModel,
         bool showAllPhases,
         PhaseSearchScope searchScope,
         bool showObjectCountInStatus,
         string? stateFilePath)
     {
+        if (runtimeSelection == null)
+        {
+            throw new ArgumentNullException(nameof(runtimeSelection));
+        }
+
         var nextStateFilePath = stateFilePath ?? string.Empty;
-        var currentStateFilePath = _controller.ResolveStateFilePath(_teklaContext, _log) ?? string.Empty;
+        var currentStateFilePath = runtimeSelection.StateFilePath;
         var hasStateFilePathChanged = false;
 
         if (!string.IsNullOrWhiteSpace(currentStateFilePath))
@@ -52,7 +58,11 @@ internal sealed class PhaseContextLoadController
             nextStateFilePath = currentStateFilePath;
         }
 
-        var cacheKey = new ContextCacheKey(searchScope, showAllPhases, showObjectCountInStatus);
+        var cacheKey = new ContextCacheKey(
+            runtimeSelection.ProfileSelection.SelectedProfile.Key,
+            searchScope,
+            showAllPhases,
+            showObjectCountInStatus);
         if (forceReloadFromModel || !_cachedAllPhasesContexts.TryGetValue(cacheKey, out var context))
         {
             context = _controller.LoadContext(
@@ -61,6 +71,7 @@ internal sealed class PhaseContextLoadController
                 searchScope: searchScope,
                 showAllPhases: showAllPhases,
                 showObjectCountInStatus: showObjectCountInStatus,
+                selectedProfileKey: runtimeSelection.ProfileSelection.SelectedProfile.Key,
                 log: _log);
             _cachedAllPhasesContexts[cacheKey] = context;
         }
@@ -74,12 +85,19 @@ internal sealed class PhaseContextLoadController
 
 internal readonly struct ContextCacheKey : IEquatable<ContextCacheKey>
 {
-    public ContextCacheKey(PhaseSearchScope searchScope, bool showAllPhases, bool showObjectCountInStatus)
+    public ContextCacheKey(
+        string profileKey,
+        PhaseSearchScope searchScope,
+        bool showAllPhases,
+        bool showObjectCountInStatus)
     {
+        ProfileKey = profileKey ?? string.Empty;
         SearchScope = searchScope;
         ShowAllPhases = showAllPhases;
         ShowObjectCountInStatus = showObjectCountInStatus;
     }
+
+    public string ProfileKey { get; }
 
     public PhaseSearchScope SearchScope { get; }
 
@@ -89,7 +107,8 @@ internal readonly struct ContextCacheKey : IEquatable<ContextCacheKey>
 
     public bool Equals(ContextCacheKey other)
     {
-        return SearchScope == other.SearchScope
+        return string.Equals(ProfileKey, other.ProfileKey, StringComparison.OrdinalIgnoreCase)
+            && SearchScope == other.SearchScope
             && ShowAllPhases == other.ShowAllPhases
             && ShowObjectCountInStatus == other.ShowObjectCountInStatus;
     }
@@ -103,7 +122,8 @@ internal readonly struct ContextCacheKey : IEquatable<ContextCacheKey>
     {
         unchecked
         {
-            var hashCode = (int)SearchScope;
+            var hashCode = StringComparer.OrdinalIgnoreCase.GetHashCode(ProfileKey);
+            hashCode = (hashCode * 397) ^ (int)SearchScope;
             hashCode = (hashCode * 397) ^ ShowAllPhases.GetHashCode();
             hashCode = (hashCode * 397) ^ ShowObjectCountInStatus.GetHashCode();
             return hashCode;

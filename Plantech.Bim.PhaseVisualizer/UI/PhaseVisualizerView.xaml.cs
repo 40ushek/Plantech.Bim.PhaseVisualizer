@@ -1,4 +1,5 @@
 using Plantech.Bim.PhaseVisualizer.Domain;
+using Plantech.Bim.PhaseVisualizer.Configuration;
 using Plantech.Bim.PhaseVisualizer.UI.Controls.Toggle;
 using System;
 using System.Collections.Generic;
@@ -460,6 +461,25 @@ public partial class PhaseVisualizerView : UserControl
     private void OpenLog_Click(object sender, RoutedEventArgs e)
     {
         _viewModel?.OpenLogFile();
+    }
+
+    private void ConfigProfileComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel == null || _isReloadingRows)
+        {
+            return;
+        }
+
+        if (ConfigProfileComboBox.SelectedItem is not PhaseConfigProfileDescriptor selectedProfile
+            || !_viewModel.TrySelectConfigProfile(selectedProfile))
+        {
+            return;
+        }
+
+        ReloadRows(
+            saveCurrentState: true,
+            restoreShowAllPhasesFromState: true,
+            forceReloadFromModel: false);
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)

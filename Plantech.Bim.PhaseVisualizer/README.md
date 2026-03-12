@@ -7,22 +7,29 @@ Tekla phase visualization tool with config-driven columns and Tekla-native view 
 - Tekla plugin mode is supported via `PluginWindowBase`.
 - Host app mode and plugin mode use the same shared UI control (`UI/PhaseVisualizerView`).
 
-## Config Location
+## Config Profiles
 
-Config file name: `phase-visualizer.json`
-
-Load order:
+Config files are discovered from:
 1. Model root:
-   - `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
+   - `<ModelPath>/PT_PhaseVisualizer`
 2. Firm root (`XS_FIRM`):
-   - `<XS_FIRM>/PT_PhaseVisualizer/phase-visualizer.json`
-3. Application base:
-   - `<ApplicationBase>/PT_PhaseVisualizer/phase-visualizer.json`
-4. embedded defaults
+   - `<XS_FIRM>/PT_PhaseVisualizer`
+3. embedded defaults when no profile file exists
 
-If no config file exists in any lookup path, a default config is auto-created at:
-- `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
-- Auto-created default config uses explicit `applyRule` mappings (no legacy `targetAttribute=exclude_*` flags).
+Profile file naming:
+- `<name>.phase-visualizer.json`
+- example: `default.phase-visualizer.json`, `production.phase-visualizer.json`
+- legacy `phase-visualizer.json` is still accepted as implicit `default`
+
+Profile selection:
+- UI shows a `Config` `ComboBox`
+- the `ComboBox` displays only the profile name, without the technical suffix
+- switching profile fully reloads config, table, rows, and state
+- the last selected profile is remembered per user
+
+If no config file exists in model or firm lookup roots, a default profile is auto-created at:
+- `<ModelPath>/PT_PhaseVisualizer/default.phase-visualizer.json`
+- auto-created default config uses explicit `applyRule` mappings (no legacy `targetAttribute=exclude_*` flags)
 
 ## Logging
 
@@ -35,8 +42,7 @@ If no config file exists in any lookup path, a default config is auto-created at
 - Log directory resolution order:
 1. `<ModelPath>/PT_PhaseVisualizer`
 2. `<XS_FIRM>/PT_PhaseVisualizer`
-3. `<ApplicationBase>/PT_PhaseVisualizer`
-4. `%LOCALAPPDATA%/Plantech/PhaseVisualizer`
+3. `%LOCALAPPDATA%/Plantech/PhaseVisualizer`
 
 ## Column Model
 
@@ -243,8 +249,11 @@ Notes:
 
 ## State and Presets
 
-- Runtime state and presets are stored in:
-  - `<ModelPath>/attributes/phase-visualizer.state.json`
+- Runtime state and presets are stored per user, outside the shared model:
+  - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`
+- Last selected profile is stored in:
+  - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/session.json`
+- Legacy shared state file (`<ModelPath>/attributes/phase-visualizer.state.json`) is used only as a best-effort fallback for the `default` profile when no local state exists yet.
 - State binds row values by `PhaseNumber`.
 
 ## Notes

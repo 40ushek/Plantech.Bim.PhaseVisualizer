@@ -1,4 +1,5 @@
 using Plantech.Bim.PhaseVisualizer.Common;
+using Plantech.Bim.PhaseVisualizer.Configuration;
 using Plantech.Bim.PhaseVisualizer.Domain;
 using Plantech.Bim.PhaseVisualizer.Orchestration;
 using Plantech.Bim.PhaseVisualizer.Services;
@@ -34,9 +35,11 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private readonly PhaseTableStateUiController _tableStateUiController;
     private readonly DataTable _table = new("PhaseVisualizer");
     private List<PhaseColumnPresentation> _columns = new();
+    private List<PhaseConfigProfileDescriptor> _configProfiles = new();
     private PhaseTableLayoutState? _tableLayoutState;
     private readonly Dictionary<int, PhaseTableRowState> _cachedRowStatesByPhase = new();
     private string _stateFilePath = string.Empty;
+    private string _activeConfigProfileKey = string.Empty;
     private bool _isRestoringShowAllPhases;
     private bool _isRestoringShowObjectCountInStatus;
     private bool _isRestoringUseVisibleViewsForSearch;
@@ -49,6 +52,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private bool _showObjectCountInStatus = false;
     private string _presetName = string.Empty;
     private List<string> _presetNames = new();
+    private PhaseConfigProfileDescriptor? _selectedConfigProfile;
 
     public PhaseVisualizerViewModel(
         PhaseVisualizerController controller,
@@ -92,6 +96,8 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     public IReadOnlyList<PhaseColumnPresentation> Columns => _columns;
 
+    public IReadOnlyList<PhaseConfigProfileDescriptor> ConfigProfiles => _configProfiles;
+
     public DataView RowsView => _table.DefaultView;
 
     public string StatusText
@@ -125,6 +131,21 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     }
 
     public IReadOnlyList<string> PresetNames => _presetNames;
+
+    public PhaseConfigProfileDescriptor? SelectedConfigProfile
+    {
+        get => _selectedConfigProfile;
+        set
+        {
+            if (ReferenceEquals(_selectedConfigProfile, value))
+            {
+                return;
+            }
+
+            _selectedConfigProfile = value;
+            OnPropertyChanged();
+        }
+    }
 
     public bool UseVisibleViewsForSearch
     {
@@ -213,6 +234,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             restoreShowAllPhasesFromState,
             forceReloadFromModel,
             _stateFilePath,
+            SelectedConfigProfile?.Key ?? _activeConfigProfileKey,
             ShowAllPhases,
             PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
             ShowObjectCountInStatus,
@@ -227,7 +249,20 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         }
 
         _stateFilePath = loadResult.StateFilePath;
+        _activeConfigProfileKey = loadResult.Context.ActiveProfile.Key;
         ApplyLoadedContext(loadResult.Context, loadResult.PersistedState, loadResult.SearchScope);
+    }
+
+    public bool TrySelectConfigProfile(PhaseConfigProfileDescriptor? profile)
+    {
+        if (profile == null
+            || string.Equals(_activeConfigProfileKey, profile.Key, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        SelectedConfigProfile = profile;
+        return true;
     }
 
     public void Apply()
@@ -319,8 +354,13 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             PhaseNumberColumnKey);
 
         _columns = result.Columns.ToList();
+        _configProfiles = context.ConfigProfiles.ToList();
+        SelectedConfigProfile = _configProfiles.FirstOrDefault(profile =>
+            string.Equals(profile.Key, context.ActiveProfile.Key, StringComparison.OrdinalIgnoreCase))
+            ?? context.ActiveProfile;
         StatusText = result.StatusText;
         UpdateRuntimePaths(context);
+        OnPropertyChanged(nameof(ConfigProfiles));
         OnPropertyChanged(nameof(Columns));
         OnPropertyChanged(nameof(RowsView));
     }
@@ -492,10 +532,13 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         var configPath = string.IsNullOrWhiteSpace(context.ConfigPath)
             ? "<embedded-defaults>"
             : context.ConfigPath;
+        var profileName = string.IsNullOrWhiteSpace(context.ActiveProfile.DisplayName)
+            ? PhaseConfigPaths.DefaultProfileKey
+            : context.ActiveProfile.DisplayName;
         var configSource = string.IsNullOrWhiteSpace(context.ConfigSource)
             ? "unknown"
             : context.ConfigSource;
-        ConfigPathText = $"Config: {configPath} (source: {configSource})";
+        ConfigPathText = $"Config: {configPath} (profile: {profileName}, source: {configSource})";
 
         var logPath = string.IsNullOrWhiteSpace(context.LogPath)
             ? "<unknown>"

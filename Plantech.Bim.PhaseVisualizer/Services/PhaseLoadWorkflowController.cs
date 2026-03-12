@@ -25,6 +25,7 @@ internal sealed class PhaseLoadWorkflowController
         bool restoreFromState,
         bool forceReloadFromModel,
         string? currentStateFilePath,
+        string? currentSelectedProfileKey,
         bool currentShowAllPhases,
         PhaseSearchScope currentSearchScope,
         bool currentShowObjectCountInStatus,
@@ -32,14 +33,10 @@ internal sealed class PhaseLoadWorkflowController
         bool isRestoringShowObjectCountInStatus,
         bool isRestoringSearchScope)
     {
-        var stateFilePath = currentStateFilePath ?? string.Empty;
-        if (restoreFromState && string.IsNullOrWhiteSpace(stateFilePath))
-        {
-            stateFilePath = _contextLoadController.ResolveStateFilePath();
-        }
-
+        var runtimeSelection = _contextLoadController.ResolveRuntimeSelection(currentSelectedProfileKey);
+        var stateFilePath = runtimeSelection.StateFilePath;
         var loadedStatePath = stateFilePath;
-        var persistedState = _stateController.Load(loadedStatePath, _log);
+        var persistedState = LoadPersistedState(runtimeSelection, loadedStatePath);
 
         var shouldApplyShowAllPhases = _stateController.TryGetRestoredShowAllPhases(
             restoreFromState,
@@ -76,6 +73,7 @@ internal sealed class PhaseLoadWorkflowController
             : currentSearchScope;
 
         var resolvedContext = _contextLoadController.Resolve(
+            runtimeSelection,
             forceReloadFromModel,
             effectiveShowAllPhases,
             effectiveSearchScope,
@@ -84,7 +82,7 @@ internal sealed class PhaseLoadWorkflowController
         stateFilePath = resolvedContext.StateFilePath;
         if (!string.Equals(loadedStatePath, stateFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            persistedState = _stateController.Load(stateFilePath, _log);
+            persistedState = LoadPersistedState(runtimeSelection, stateFilePath);
         }
 
         return new PhaseLoadWorkflowResult(
@@ -98,6 +96,23 @@ internal sealed class PhaseLoadWorkflowController
             effectiveShowObjectCountInStatus,
             shouldApplySearchScope,
             effectiveSearchScope);
+    }
+
+    private PhaseTableState? LoadPersistedState(PhaseRuntimeSelection runtimeSelection, string stateFilePath)
+    {
+        var persistedState = _stateController.Load(stateFilePath, _log);
+        if (persistedState != null)
+        {
+            return persistedState;
+        }
+
+        var selectedProfileKey = runtimeSelection.ProfileSelection.SelectedProfile.Key;
+        if (!string.Equals(selectedProfileKey, Configuration.PhaseConfigPaths.DefaultProfileKey, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return _stateController.Load(runtimeSelection.LocalUserStoragePaths.LegacyStateFilePath, _log);
     }
 }
 

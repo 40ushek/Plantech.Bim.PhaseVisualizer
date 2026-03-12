@@ -15,12 +15,15 @@ Implemented:
 - Conditional attribute scan only when model attributes are required.
 - Toggle: show all phases vs only phases with objects.
 - ViewModel keeps cached full-phase context; `Show All Phases` switch does not force repeated heavy model reads each toggle.
-- State and presets persisted in `<ModelPath>/attributes/phase-visualizer.state.json`.
+- State and presets persisted per user in `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`.
 - Config search path migrated to:
   1. Model root: `PT_PhaseVisualizer`
   2. Firm root (`XS_FIRM`): `PT_PhaseVisualizer`
-  3. Application base: `PT_PhaseVisualizer`
-  4. embedded defaults.
+  3. embedded defaults.
+- Config profiles supported:
+  - `<name>.phase-visualizer.json`
+  - legacy `phase-visualizer.json` is treated as implicit `default`
+  - active profile is selected from a `ComboBox` and remembered per user
 - Logging configured to `phase-visualizer.log` in effective config directory (`PT_PhaseVisualizer`) via `PhaseVisualizerLogConfigurator`.
 - Apply diagnostics are available both in UI status and logs.
 - Apply now returns structured result with failure reason/details (`PhaseApplyResult`), and UI status is mapped from explicit failure reason.
@@ -89,7 +92,7 @@ Status: DONE
 Done:
 - Legacy semantic sources rejected by validator for model columns.
 - Resolver uses explicit object/attribute mapping.
-- Config directories unified to `PT_PhaseVisualizer` for model / firm (`XS_FIRM`) / application roots.
+- Config directories unified to `PT_PhaseVisualizer` for model / firm (`XS_FIRM`) roots.
 
 ### M6 - Hardening and Test Coverage
 Status: TODO
@@ -190,8 +193,8 @@ Note:
 
 - Keep filtering Tekla-native; avoid full in-memory filtering.
 - Keep config and runtime state separate:
-  - `phase-visualizer.json` = schema/layout/targets
-  - `phase-visualizer.state.json` = user row values and presets.
+  - `<name>.phase-visualizer.json` = schema/layout/targets
+  - `state.<profile>.json` = user row values and presets.
 - Bind persisted row state by `PhaseNumber` (phase name is not stable).
 
 ## Next Recommended Step
@@ -199,9 +202,9 @@ Note:
 1. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
 2. Execute **M8 typed editable operations** if priority remains unchanged.
 
-## Future UX Idea
+## Current UX Notes
 
-- Support multiple config profiles in `PT_PhaseVisualizer`, for example `default.phase-visualizer.json`, `production.phase-visualizer.json`, `erection.phase-visualizer.json`.
-- Add a `ComboBox` in the UI that lists profile names without the technical file suffix.
-- When the active profile changes, fully reload the table from the selected config and use state scoped to that config.
-- Remember the last selected profile for the current user.
+- Multiple config profiles are now supported in `PT_PhaseVisualizer`.
+- The UI `ComboBox` shows display names without the technical suffix.
+- Profile switch performs a full reload and uses state scoped to the selected profile.
+- The last selected profile is remembered per user.

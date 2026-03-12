@@ -12,7 +12,7 @@ Tekla Structures tooling for configuration-driven visualization and custom attri
 The tool supports:
 - host window mode,
 - Tekla plugin window mode,
-- JSON-driven table/filters (`PT_PhaseVisualizer/phase-visualizer.json`),
+- JSON-driven table/filters (`PT_PhaseVisualizer/<name>.phase-visualizer.json`),
 - generated Tekla view filters (`PT_SubsystemSelection`).
 
 `Plantech.Bim.Custom` currently includes:
@@ -28,16 +28,19 @@ The tool supports:
 1. Build solution:
    - `dotnet build Plantech.Bim.sln -c Debug`
 2. Configure columns/filters:
-   - `Plantech.Bim.PhaseVisualizer.Host/bin/Debug/net48/PT_PhaseVisualizer/phase-visualizer.json`
+   - `Plantech.Bim.PhaseVisualizer.Host/bin/Debug/net48/PT_PhaseVisualizer/default.phase-visualizer.json`
 3. Run host mode for fast UI iteration, or load plugin in Tekla.
 
 ## Config and Logs
 
-- Config search order:
-  1. `<ModelPath>/PT_PhaseVisualizer/phase-visualizer.json`
-  2. `<XS_FIRM>/PT_PhaseVisualizer/phase-visualizer.json`
-  3. `<ApplicationBase>/PT_PhaseVisualizer/phase-visualizer.json`
-  4. embedded defaults
+- Config profile search order:
+  1. `<ModelPath>/PT_PhaseVisualizer/<name>.phase-visualizer.json`
+  2. `<XS_FIRM>/PT_PhaseVisualizer/<name>.phase-visualizer.json`
+  3. embedded defaults
+  - legacy `phase-visualizer.json` is still accepted as implicit `default`
+- PhaseVisualizer state:
+  - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`
+  - last selected profile is remembered per user in `session.json`
 - Log file:
   - `phase-visualizer.log` in effective `PT_PhaseVisualizer` directory
 

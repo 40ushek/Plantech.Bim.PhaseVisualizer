@@ -21,5 +21,12 @@ internal sealed class PhaseVisualizerContext
     public string ConfigPath { get; set; } = string.Empty;
     public string ConfigSource { get; set; } = string.Empty;
     public string LogPath { get; set; } = string.Empty;
+    public IReadOnlyList<PhaseConfigProfileDescriptor> ConfigProfiles { get; set; } = Array.Empty<PhaseConfigProfileDescriptor>();
+    public PhaseConfigProfileDescriptor ActiveProfile { get; set; } = new(
+        PhaseConfigPaths.DefaultProfileKey,
+        PhaseConfigPaths.DefaultProfileKey,
+        PhaseConfigPaths.BuildConfigFileName(PhaseConfigPaths.DefaultProfileKey),
+        string.Empty,
+        PhaseConfigProfileSourceKind.EmbeddedDefaults);
 }
 

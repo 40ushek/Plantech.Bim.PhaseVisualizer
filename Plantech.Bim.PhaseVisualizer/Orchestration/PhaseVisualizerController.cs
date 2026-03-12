@@ -21,6 +21,7 @@ internal sealed class PhaseVisualizerController
     private readonly TeklaPhaseDataProvider _dataProvider;
     private readonly PhaseTableBuilder _tableBuilder;
     private readonly IPhaseActionExecutor _actionExecutor;
+    private readonly PhaseRuntimeSelectionResolver _runtimeSelectionResolver;
     private readonly object _pathDiagnosticsSync = new();
     private bool _pathDiagnosticsLogged;
 
@@ -29,7 +30,8 @@ internal sealed class PhaseVisualizerController
             new PhaseTableConfigLoader(),
             new TeklaPhaseDataProvider(),
             new PhaseTableBuilder(),
-            new PhaseActionExecutor())
+            new PhaseActionExecutor(),
+            null)
     {
     }
 
@@ -38,30 +40,71 @@ internal sealed class PhaseVisualizerController
         TeklaPhaseDataProvider dataProvider,
         PhaseTableBuilder tableBuilder,
         IPhaseActionExecutor actionExecutor)
+        : this(
+            configProvider,
+            dataProvider,
+            tableBuilder,
+            actionExecutor,
+            null)
+    {
+    }
+
+    internal PhaseVisualizerController(
+        PhaseTableConfigLoader configProvider,
+        TeklaPhaseDataProvider dataProvider,
+        PhaseTableBuilder tableBuilder,
+        IPhaseActionExecutor actionExecutor,
+        PhaseRuntimeSelectionResolver? runtimeSelectionResolver)
     {
         _configProvider = configProvider ?? throw new ArgumentNullException(nameof(configProvider));
         _dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider));
         _tableBuilder = tableBuilder ?? throw new ArgumentNullException(nameof(tableBuilder));
         _actionExecutor = actionExecutor ?? throw new ArgumentNullException(nameof(actionExecutor));
+        _runtimeSelectionResolver = runtimeSelectionResolver
+            ?? new PhaseRuntimeSelectionResolver(
+                _configProvider,
+                new PhaseLocalUserStoragePathResolver(),
+                new PhaseConfigProfileSessionStore());
     }
 
     public IPhaseActionExecutor ActionExecutor => _actionExecutor;
 
     public string ResolveStateFilePath(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        return ResolveContextPathsFromTekla(teklaContext, log).StateFilePath;
+        return ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, log).StateFilePath;
     }
 
     public string ResolveEffectiveConfigDirectory(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
-        return _configProvider.ResolveEffectiveConfigDirectory(contextPaths.ModelConfigDirectory);
+        var runtimeSelection = ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, log);
+        return _configProvider.ResolveEffectiveConfigDirectory(
+            runtimeSelection.ModelConfigDirectory,
+            runtimeSelection.ProfileSelection.SelectedProfile.Key,
+            rememberedProfileKey: null);
     }
 
     public void LogStartupDiagnostics(SynchronizationContext? teklaContext, ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
-        LogPathDiagnosticsOnce(contextPaths, log);
+        LogPathDiagnosticsOnce(contextPaths, selectedProfileKey: null, log);
+    }
+
+    internal PhaseRuntimeSelection ResolveRuntimeSelection(
+        SynchronizationContext? teklaContext,
+        string? selectedProfileKey,
+        ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
+        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+    }
+
+    internal PhaseRuntimeSelection ResolveRuntimeSelection(
+        string? modelConfigDirectory,
+        string? selectedProfileKey,
+        ILogger? log = null)
+    {
+        var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
+        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
     }
 
     public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
@@ -72,6 +115,7 @@ internal sealed class PhaseVisualizerController
             searchScope: PhaseSearchScope.TeklaModel,
             showAllPhases: false,
             showObjectCountInStatus: true,
+            selectedProfileKey: null,
             log);
     }
 
@@ -88,6 +132,7 @@ internal sealed class PhaseVisualizerController
             searchScope,
             showAllPhases: includeAllPhases,
             showObjectCountInStatus: true,
+            selectedProfileKey: null,
             log);
     }
 
@@ -97,6 +142,7 @@ internal sealed class PhaseVisualizerController
         PhaseSearchScope searchScope,
         bool showAllPhases,
         bool showObjectCountInStatus,
+        string? selectedProfileKey = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
@@ -107,6 +153,7 @@ internal sealed class PhaseVisualizerController
             searchScope,
             showAllPhases,
             showObjectCountInStatus,
+            selectedProfileKey,
             log);
     }
 
@@ -125,6 +172,7 @@ internal sealed class PhaseVisualizerController
             searchScope,
             showAllPhases: includeAllPhases,
             showObjectCountInStatus: true,
+            selectedProfileKey: null,
             log);
     }
 
@@ -135,6 +183,7 @@ internal sealed class PhaseVisualizerController
         PhaseSearchScope searchScope,
         bool showAllPhases,
         bool showObjectCountInStatus,
+        string? selectedProfileKey = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
@@ -145,6 +194,7 @@ internal sealed class PhaseVisualizerController
             searchScope,
             showAllPhases,
             showObjectCountInStatus,
+            selectedProfileKey,
             log);
     }
 
@@ -155,13 +205,18 @@ internal sealed class PhaseVisualizerController
         PhaseSearchScope searchScope,
         bool showAllPhases,
         bool showObjectCountInStatus,
+        string? selectedProfileKey,
         ILogger? log = null)
     {
-        LogPathDiagnosticsOnce(contextPaths, log);
+        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        LogPathDiagnosticsOnce(contextPaths, runtimeSelection.ProfileSelection.SelectedProfile.Key, log);
 
-        var configResolution = _configProvider.ResolveConfigResolution(contextPaths.ModelConfigDirectory);
-        var effectiveConfigDirectory = _configProvider.ResolveEffectiveConfigDirectory(contextPaths.ModelConfigDirectory);
-        var config = _configProvider.Load(contextPaths.ModelConfigDirectory, log);
+        var configLoad = _configProvider.LoadResolved(
+            runtimeSelection.ModelConfigDirectory,
+            runtimeSelection.ProfileSelection,
+            log);
+        var effectiveConfigDirectory = configLoad.EffectiveConfigDirectory;
+        var config = configLoad.Config;
         var includePhaseObjectCounts = ShouldIncludePhaseObjectCounts(
             config,
             includeAllPhases,
@@ -183,10 +238,12 @@ internal sealed class PhaseVisualizerController
         {
             Config = config,
             Rows = rows,
-            StateFilePath = contextPaths.StateFilePath,
-            ConfigPath = configResolution.EffectiveConfigPath,
-            ConfigSource = configResolution.SourceName,
+            StateFilePath = runtimeSelection.StateFilePath,
+            ConfigPath = configLoad.EffectiveConfigPath,
+            ConfigSource = configLoad.SourceName,
             LogPath = PhaseVisualizerLogConfigurator.ResolveLogPath(effectiveConfigDirectory),
+            ConfigProfiles = configLoad.Catalog.Profiles,
+            ActiveProfile = configLoad.SelectedProfile,
             SnapshotMeta = new PhaseSnapshotMeta
             {
                 CreatedAtUtc = snapshot.CreatedAtUtc,
@@ -205,7 +262,7 @@ internal sealed class PhaseVisualizerController
         return showObjectCountInStatus;
     }
 
-    private void LogPathDiagnosticsOnce(ContextPaths contextPaths, ILogger? log)
+    private void LogPathDiagnosticsOnce(ContextPaths contextPaths, string? selectedProfileKey, ILogger? log)
     {
         if (log == null)
         {
@@ -222,10 +279,14 @@ internal sealed class PhaseVisualizerController
             _pathDiagnosticsLogged = true;
         }
 
-        var modelPath = ResolveModelPathFromConfigDirectory(contextPaths.ModelConfigDirectory);
+        var modelPath = contextPaths.ModelPath;
         var firmPath = ResolveFirmPath();
         var environmentPath = ResolveEnvironmentPath();
-        var configResolution = _configProvider.ResolveConfigResolution(contextPaths.ModelConfigDirectory);
+        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        var configResolution = _configProvider.ResolveConfigResolution(
+            contextPaths.ModelConfigDirectory,
+            runtimeSelection.ProfileSelection.SelectedProfile.Key,
+            rememberedProfileKey: null);
         var effectiveConfigPath = string.IsNullOrWhiteSpace(configResolution.EffectiveConfigPath)
             ? "<embedded-defaults>"
             : configResolution.EffectiveConfigPath;
@@ -234,6 +295,7 @@ internal sealed class PhaseVisualizerController
         log.Information("  Model={ModelPath}", FormatPathForLog(modelPath));
         log.Information("  Firm={FirmPath}", FormatPathForLog(firmPath));
         log.Information("  Environment={EnvironmentPath}", FormatPathForLog(environmentPath));
+        log.Information("  ConfigProfile={ConfigProfile}", configResolution.ProfileDisplayName);
         log.Information("  ConfigFile={ConfigFileName}", configResolution.ConfigFileName);
         log.Information("  ConfigPath={ConfigPath}", effectiveConfigPath);
         log.Information("  ConfigSource={ConfigSource}", configResolution.SourceName);
@@ -331,8 +393,9 @@ internal sealed class PhaseVisualizerController
         var safeModelConfigDirectory = modelConfigDirectory ?? string.Empty;
         var modelPath = ResolveModelPathFromConfigDirectory(safeModelConfigDirectory);
         return new ContextPaths(
+            modelPath,
             safeModelConfigDirectory,
-            BuildStateFilePath(modelPath));
+            BuildLegacyStateFilePath(modelPath));
     }
 
     private static string ResolveModelPath(SynchronizationContext? teklaContext, ILogger? log = null)
@@ -365,7 +428,7 @@ internal sealed class PhaseVisualizerController
         return Path.Combine(modelPath, PhaseConfigPaths.ConfigDirectoryName);
     }
 
-    private static string BuildStateFilePath(string modelPath)
+    private static string BuildLegacyStateFilePath(string modelPath)
     {
         if (string.IsNullOrWhiteSpace(modelPath))
         {
@@ -443,22 +506,37 @@ internal sealed class PhaseVisualizerController
         return Directory.Exists(path) ? path : string.Empty;
     }
 
+    private PhaseRuntimeSelection ResolveRuntimeSelection(
+        ContextPaths contextPaths,
+        string? selectedProfileKey,
+        ILogger? log)
+    {
+        return _runtimeSelectionResolver.Resolve(
+            contextPaths.ModelPath,
+            contextPaths.ModelConfigDirectory,
+            selectedProfileKey,
+            log);
+    }
+
     private readonly struct ContextPaths
     {
-        public ContextPaths(string modelConfigDirectory, string stateFilePath)
+        public ContextPaths(string modelPath, string modelConfigDirectory, string legacyStateFilePath)
         {
+            ModelPath = modelPath;
             ModelConfigDirectory = modelConfigDirectory;
-            StateFilePath = stateFilePath;
+            LegacyStateFilePath = legacyStateFilePath;
         }
 
+        public string ModelPath { get; }
         public string ModelConfigDirectory { get; }
-        public string StateFilePath { get; }
+        public string LegacyStateFilePath { get; }
 
         public static ContextPaths FromModelPath(string modelPath)
         {
             return new ContextPaths(
+                modelPath,
                 BuildModelConfigDirectory(modelPath),
-                BuildStateFilePath(modelPath));
+                BuildLegacyStateFilePath(modelPath));
         }
     }
 }
