@@ -29,7 +29,7 @@ Implemented:
   Detailed rollout/status is tracked in `ROADMAP_APPLY_RULES.md`.
 - Config-driven Tekla filter reference for editable boolean columns:
   - `teklaFilterName` is supported in column schema.
-  - referenced `.SObjGrp` filter expression is loaded and merged with generated criteria using `AND`.
+  - referenced `.SObjGrp` filter expression is loaded and merged into the phase branch where the toggle is enabled.
   - unresolved/invalid file is logged as warning and ignored (fail-safe).
   - relative filter name lookup now uses Tekla attribute directories:
     1. `<ModelPath>/attributes`
@@ -153,7 +153,7 @@ Done:
 - Validator normalization added:
   - accepted only for editable boolean columns,
   - unsupported usage is ignored with warning.
-- `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines with generated criteria using `AND`.
+- `PhaseFilterExpressionBuilder` loads referenced `.SObjGrp` and combines it inside the corresponding phase group.
 - `teklaFilterNegate` option added for file-filter columns (optional; default `false`) to invert loaded file filter before merge.
 - Filter reference resolution:
   - absolute file path, or
