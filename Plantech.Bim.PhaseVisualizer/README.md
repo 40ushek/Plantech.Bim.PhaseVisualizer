@@ -103,6 +103,29 @@ Example model column for bolt:
 }
 ```
 
+### Display formatting
+
+String columns can apply an explicit display formatter without changing the stored source value:
+
+```json
+{
+  "key": "freigabe_values",
+  "label": "FreigabeDaten",
+  "type": "String",
+  "objectType": "Part",
+  "attribute": "ua.PT_FREIGABE",
+  "aggregate": "Distinct",
+  "displayFormat": "unixSecondsDate",
+  "dateFormat": "yyyy-MM-dd"
+}
+```
+
+Supported display formats:
+- `unixSecondsDate`
+  - interprets Unix timestamp seconds
+  - formats output using `dateFormat`
+  - works well for UDA values such as `1730764800`
+
 ### Editable filter column (user input)
 
 Use `editable: true` and target mapping:

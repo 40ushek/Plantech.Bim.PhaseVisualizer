@@ -18,6 +18,8 @@ internal sealed class PhaseColumnConfig
     public bool TeklaFilterNegate { get; set; }
     public string BooleanMode { get; set; } = string.Empty;
     public PhaseApplyRuleConfig? ApplyRule { get; set; }
+    public string DisplayFormat { get; set; } = string.Empty;
+    public string DateFormat { get; set; } = string.Empty;
     public PhaseAggregateType Aggregate { get; set; } = PhaseAggregateType.First;
     public bool VisibleByDefault { get; set; } = true;
     public int Order { get; set; }

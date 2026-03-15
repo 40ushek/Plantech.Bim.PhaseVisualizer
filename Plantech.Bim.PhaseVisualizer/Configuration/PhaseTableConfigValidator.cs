@@ -30,6 +30,7 @@ internal sealed class PhaseTableConfigValidator
     private const string OpIsTrue = "isTrue";
     private const string OpIsFalse = "isFalse";
     private const string BooleanModePositiveNumber = "positiveNumber";
+    private const string DisplayFormatUnixSecondsDate = "unixSecondsDate";
 
     private static readonly HashSet<string> StringOps = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -143,6 +144,8 @@ internal sealed class PhaseTableConfigValidator
         var rawTeklaFilterName = raw.TeklaFilterName?.Trim() ?? string.Empty;
         var rawTeklaFilterNegate = raw.TeklaFilterNegate;
         var rawBooleanMode = raw.BooleanMode?.Trim() ?? string.Empty;
+        var rawDisplayFormat = raw.DisplayFormat?.Trim() ?? string.Empty;
+        var rawDateFormat = raw.DateFormat?.Trim() ?? string.Empty;
         var rawApplyRule = raw.ApplyRule;
 
         PhaseColumnObjectType? normalizedObjectType = null;
@@ -152,6 +155,8 @@ internal sealed class PhaseTableConfigValidator
         var normalizedTeklaFilterName = string.Empty;
         var normalizedTeklaFilterNegate = false;
         var normalizedBooleanMode = string.Empty;
+        var normalizedDisplayFormat = string.Empty;
+        var normalizedDateFormat = string.Empty;
         PhaseApplyRuleConfig? normalizedApplyRule = null;
 
         if (raw.Editable)
@@ -323,6 +328,9 @@ internal sealed class PhaseTableConfigValidator
             }
         }
 
+        normalizedDisplayFormat = NormalizeDisplayFormat(rawDisplayFormat, key, raw.Type, log);
+        normalizedDateFormat = NormalizeDateFormat(rawDateFormat, normalizedDisplayFormat);
+
         normalized = new PhaseColumnConfig
         {
             Key = key,
@@ -337,6 +345,8 @@ internal sealed class PhaseTableConfigValidator
             TeklaFilterNegate = normalizedTeklaFilterNegate,
             BooleanMode = normalizedBooleanMode,
             ApplyRule = normalizedApplyRule,
+            DisplayFormat = normalizedDisplayFormat,
+            DateFormat = normalizedDateFormat,
             Aggregate = raw.Aggregate,
             VisibleByDefault = raw.VisibleByDefault,
             Order = raw.Order,
@@ -571,6 +581,49 @@ internal sealed class PhaseTableConfigValidator
         }
 
         return true;
+    }
+
+    private static string NormalizeDisplayFormat(
+        string rawDisplayFormat,
+        string columnKey,
+        PhaseValueType valueType,
+        ILogger? log)
+    {
+        if (string.IsNullOrWhiteSpace(rawDisplayFormat))
+        {
+            return string.Empty;
+        }
+
+        if (valueType != PhaseValueType.String)
+        {
+            log?.Warning(
+                "PhaseVisualizer config column {Key} ignored displayFormat '{DisplayFormat}' because column type is {Type}, expected String.",
+                columnKey,
+                rawDisplayFormat,
+                valueType);
+            return string.Empty;
+        }
+
+        if (string.Equals(rawDisplayFormat, DisplayFormatUnixSecondsDate, StringComparison.OrdinalIgnoreCase))
+        {
+            return DisplayFormatUnixSecondsDate;
+        }
+
+        log?.Warning(
+            "PhaseVisualizer config column {Key} ignored unknown displayFormat '{DisplayFormat}'.",
+            columnKey,
+            rawDisplayFormat);
+        return string.Empty;
+    }
+
+    private static string NormalizeDateFormat(string rawDateFormat, string normalizedDisplayFormat)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedDisplayFormat))
+        {
+            return string.Empty;
+        }
+
+        return rawDateFormat?.Trim() ?? string.Empty;
     }
 }
 

@@ -210,7 +210,7 @@ internal sealed class PhaseTableBuilder
             _ => values[0],
         };
 
-        return aggregateResult.ConvertTo(column.Type);
+        return PhaseCellDisplayFormatter.Format(aggregateResult, column);
     }
 
     private static PhaseCellValue ResolveValue(
@@ -383,4 +383,3 @@ internal sealed class PhaseTableBuilder
         };
     }
 }
-
