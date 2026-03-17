@@ -253,12 +253,14 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     public void Load(bool restoreShowAllPhasesFromState, bool forceReloadFromModel = false)
     {
+        var selectedProfileKey = SelectedConfigProfile?.Key ?? _activeConfigProfileKey;
+        var selectedStateName = ResolveRequestedStateNameForLoad(selectedProfileKey, _requestedStateName);
         var loadResult = _loadWorkflowController.Execute(
             restoreShowAllPhasesFromState,
             forceReloadFromModel,
             _stateFilePath,
-            SelectedConfigProfile?.Key ?? _activeConfigProfileKey,
-            _requestedStateName,
+            selectedProfileKey,
+            selectedStateName,
             ShowAllPhases,
             PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
             ShowObjectCountInStatus,
@@ -638,6 +640,13 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             ? "<unknown>"
             : context.LogPath;
         LogPathText = $"Log: {logPath}";
+    }
+
+    internal static string? ResolveRequestedStateNameForLoad(string? selectedProfileKey, string? requestedStateName)
+    {
+        return string.IsNullOrWhiteSpace(selectedProfileKey)
+            ? null
+            : requestedStateName;
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

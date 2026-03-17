@@ -13,6 +13,7 @@ The tool supports:
 - host window mode,
 - Tekla plugin window mode,
 - JSON-driven table/filters (`PT_PhaseVisualizer/<name>.phase-visualizer.json`),
+- named state snapshots (`state.<profile>.json`, `state.<profile>.<name>.json`),
 - generated Tekla view filters (`PT_SubsystemSelection`).
 
 `Plantech.Bim.Custom` currently includes:
@@ -39,8 +40,8 @@ The tool supports:
   3. embedded defaults
   - legacy `phase-visualizer.json` is still accepted as implicit `default`
 - PhaseVisualizer state:
-  - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`
-  - last selected profile is remembered per user in `session.json`
+  - `state.<profile>.json` and `state.<profile>.<name>.json` live next to the resolved config file
+  - the last selected `config + state` pair is remembered per user in `session.json`
 - Log file:
   - `phase-visualizer.log` in effective `PT_PhaseVisualizer` directory
 

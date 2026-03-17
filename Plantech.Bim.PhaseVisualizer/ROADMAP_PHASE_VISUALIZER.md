@@ -15,7 +15,11 @@ Implemented:
 - Conditional attribute scan only when model attributes are required.
 - Toggle: show all phases vs only phases with objects.
 - ViewModel keeps cached full-phase context; `Show All Phases` switch does not force repeated heavy model reads each toggle.
-- State and presets persisted per user in `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`.
+- State is stored next to the resolved config file:
+  - `state.<profile>.json`
+  - `state.<profile>.<name>.json`
+- The last selected `config + state` pair is remembered per user in local `session.json`.
+- State persistence includes `configFingerprint` validation.
 - Config search path migrated to:
   1. Model root: `PT_PhaseVisualizer`
   2. Firm root (`XS_FIRM`): `PT_PhaseVisualizer`
@@ -185,7 +189,7 @@ Done:
 - Some template/system filters (for example certain `standard.SObjGrp` variants with empty template operands) may fail to parse via `Filter(fullFileName, ...)`; such filters are currently logged and ignored in composed apply expression.
 - `teklaFilterName` currently supports object-group selection filters (`.SObjGrp`) only; representation/view filters are intentionally out of scope for this pipeline.
 - Multi-phase selection still uses a root `OR` collection over phase groups. Keep this for now because the generated Tekla filter is working correctly; only revisit root-level flattening if a real bracket-depth limit is hit in Tekla.
-- Per-profile local state is currently keyed by profile name, not by config content fingerprint. If a profile file changes in place, the old state/layout/presets can still be loaded best-effort against the new config shape.
+- Named states are per-profile and resolved next to the selected config file.
 
 Note:
 - Refactoring-only tasks are tracked separately in local file `ROADMAP_REFACTORING.local.md` (not in Git).
@@ -195,27 +199,21 @@ Note:
 - Keep filtering Tekla-native; avoid full in-memory filtering.
 - Keep config and runtime state separate:
   - `<name>.phase-visualizer.json` = schema/layout/targets
-  - `state.<profile>.json` = user row values and presets.
+  - `state.<profile>.json` / `state.<profile>.<name>.json` = saved row values and presets for that profile.
 - Bind persisted row state by `PhaseNumber` (phase name is not stable).
 
 ## Next Recommended Step
 
 1. Complete **M6 hardening + tests** with focus on `Apply` stability and logging diagnostics.
 2. Execute **M8 typed editable operations** if priority remains unchanged.
-3. Add **config fingerprint** to local state/session flow so profile state can be invalidated or partially reset when the underlying config file changes without a profile rename.
+3. Expand tests around named state UX and close/save behavior.
 
 ## Current UX Notes
 
-- Multiple config profiles are now supported in `PT_PhaseVisualizer`.
-- The UI `ComboBox` shows display names without the technical suffix.
+- Multiple config profiles are supported in `PT_PhaseVisualizer`.
+- The UI `Config` `ComboBox` shows profile names without the technical suffix.
+- The UI `State` `ComboBox` is editable:
+  - select an existing state
+  - or type a new name and press `Save`
 - Profile switch performs a full reload and uses state scoped to the selected profile.
-- The last selected profile is remembered per user.
-
-## Config Fingerprint Follow-Up
-
-- Add a stable fingerprint for the active config profile, for example a normalized content hash.
-- Persist that fingerprint alongside local `state.<profile>.json`.
-- On load:
-  - if fingerprint matches, reuse state normally;
-  - if fingerprint changed, either reset state fully or keep only safe parts (for example row values) and drop layout/presets.
-- This should prevent stale local state from silently surviving a config edit when the profile file name stays the same.
+- The last selected `config + state` pair is remembered per user.

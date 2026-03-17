@@ -23,9 +23,10 @@ Profile file naming:
 
 Profile selection:
 - UI shows a `Config` `ComboBox`
+- UI shows an editable `State` `ComboBox`
 - the `ComboBox` displays only the profile name, without the technical suffix
 - switching profile fully reloads config, table, rows, and state
-- the last selected profile is remembered per user
+- the last selected `config + state` pair is remembered per user
 
 If no config file exists in model or firm lookup roots, a default profile is auto-created at:
 - `<ModelPath>/PT_PhaseVisualizer/default.phase-visualizer.json`
@@ -272,12 +273,23 @@ Notes:
 
 ## State and Presets
 
-- Runtime state and presets are stored per user, outside the shared model:
-  - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/state.<profile>.json`
-- Last selected profile is stored in:
+- Runtime state is stored next to the resolved config file:
+  - `state.<profile>.json`
+  - `state.<profile>.<name>.json`
+- The editable `State` `ComboBox` supports:
+  - selecting an existing named state
+  - typing a new state name and saving it
+- `Save` updates the selected state or creates a new named state when the typed name does not exist yet.
+- The last selected `config + state` pair is stored per user in:
   - `%LOCALAPPDATA%/Plantech/PhaseVisualizer/<model-key>/session.json`
-- Legacy shared state file (`<ModelPath>/attributes/phase-visualizer.state.json`) is used only as a best-effort fallback for the `default` profile when no local state exists yet.
+- State loading rules:
+  - if the remembered config exists, it is restored
+  - if the remembered state for that config exists, it is restored
+  - otherwise the state falls back to `default`
 - State binds row values by `PhaseNumber`.
+- Each saved state includes a `configFingerprint`.
+  - matching fingerprint -> state loads normally
+  - mismatched fingerprint -> state is ignored and a clean default state is used
 
 ## Notes
 
