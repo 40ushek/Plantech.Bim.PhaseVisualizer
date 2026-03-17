@@ -322,6 +322,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             _teklaContext,
             selectedProfileKey,
             requestedStateName,
+            allowMissingRequestedStateName: true,
             _log);
         if (string.IsNullOrWhiteSpace(runtimeSelection.StateFilePath))
         {

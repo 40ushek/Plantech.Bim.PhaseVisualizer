@@ -28,6 +28,7 @@ internal sealed class PhaseRuntimeSelectionResolver
         string modelConfigDirectory,
         string? requestedProfileKey,
         string? requestedStateName,
+        bool allowMissingRequestedStateName = false,
         ILogger? log = null)
     {
         var localUserStoragePaths = _localUserStoragePathResolver.ResolveBase(modelPath);
@@ -38,7 +39,16 @@ internal sealed class PhaseRuntimeSelectionResolver
             rememberedProfileKey);
 
         var stateNames = DiscoverStateNames(modelConfigDirectory, profileSelection);
-        var selectedStateName = SelectStateName(requestedStateName, stateNames);
+        var selectedStateName = SelectStateName(requestedStateName, stateNames, allowMissingRequestedStateName);
+        if (allowMissingRequestedStateName
+            && !stateNames.Any(name => string.Equals(name, selectedStateName, StringComparison.OrdinalIgnoreCase)))
+        {
+            stateNames = stateNames
+                .Append(selectedStateName)
+                .OrderBy(name => string.Equals(name, "default", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
         var stateFilePath = ResolveColocatedStateFilePath(modelConfigDirectory, profileSelection, selectedStateName);
         var configFingerprint = PhaseConfigFingerprint.ComputeFromFile(profileSelection.SelectedProfile.FilePath);
         _sessionStore.SaveSelectedProfileKey(
@@ -171,10 +181,18 @@ internal sealed class PhaseRuntimeSelectionResolver
         return string.IsNullOrWhiteSpace(result) ? "default" : result;
     }
 
-    private static string SelectStateName(string? requestedStateName, IReadOnlyList<string> availableStateNames)
+    private static string SelectStateName(
+        string? requestedStateName,
+        IReadOnlyList<string> availableStateNames,
+        bool allowMissingRequestedStateName)
     {
         var normalizedStateName = NormalizeStateName(requestedStateName);
         if (availableStateNames.Any(name => string.Equals(name, normalizedStateName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return normalizedStateName;
+        }
+
+        if (allowMissingRequestedStateName)
         {
             return normalizedStateName;
         }

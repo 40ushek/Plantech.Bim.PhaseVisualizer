@@ -213,6 +213,29 @@ public sealed class StateStorageBehaviorTests
             runtimeSelection.StateFilePath);
     }
 
+    [Fact]
+    public void PhaseRuntimeSelectionResolver_UsesRequestedNamedStateWhenAllowedForSave()
+    {
+        using var tempScope = new TempDirectoryScope();
+        var localAppDataRoot = tempScope.CreateSubdirectory("local-app-data");
+        var modelRoot = tempScope.CreateSubdirectory("model");
+        WriteConfigFile(modelRoot, "seva.phase-visualizer.json");
+
+        var resolver = CreateResolver(localAppDataRoot);
+        var runtimeSelection = resolver.Resolve(
+            modelRoot,
+            Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
+            requestedProfileKey: "seva",
+            requestedStateName: "review",
+            allowMissingRequestedStateName: true);
+
+        Assert.Equal("review", runtimeSelection.SelectedStateName);
+        Assert.Contains("review", runtimeSelection.StateNames);
+        Assert.Equal(
+            Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName, "state.seva.review.json"),
+            runtimeSelection.StateFilePath);
+    }
+
     private static PhaseRuntimeSelection CreateRuntimeSelection(
         TempDirectoryScope tempScope,
         out string localAppDataRoot,

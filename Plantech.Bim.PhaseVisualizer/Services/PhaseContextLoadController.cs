@@ -26,7 +26,11 @@ internal sealed class PhaseContextLoadController
 
     public PhaseRuntimeSelection ResolveRuntimeSelection(string? selectedProfileKey, string? selectedStateName)
     {
-        return _controller.ResolveRuntimeSelection(_teklaContext, selectedProfileKey, selectedStateName, _log);
+        return _controller.ResolveRuntimeSelection(
+            _teklaContext,
+            selectedProfileKey,
+            selectedStateName,
+            log: _log);
     }
 
     public PhaseContextLoadResult Resolve(
