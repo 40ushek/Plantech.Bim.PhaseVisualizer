@@ -103,11 +103,13 @@ public sealed class ConfigProfileBehaviorTests
         var selectedDesign = resolver.Resolve(
             modelRoot,
             modelConfigDirectory,
-            requestedProfileKey: "design");
+            requestedProfileKey: "design",
+            requestedStateName: null);
         var rememberedSelection = resolver.Resolve(
             modelRoot,
             modelConfigDirectory,
-            requestedProfileKey: null);
+            requestedProfileKey: null,
+            requestedStateName: null);
 
         Assert.Equal("design", selectedDesign.ProfileSelection.SelectedProfile.Key);
         Assert.Equal("design", rememberedSelection.ProfileSelection.SelectedProfile.Key);

@@ -26,6 +26,7 @@ internal sealed class PhaseLoadWorkflowController
         bool forceReloadFromModel,
         string? currentStateFilePath,
         string? currentSelectedProfileKey,
+        string? currentSelectedStateName,
         bool currentShowAllPhases,
         PhaseSearchScope currentSearchScope,
         bool currentShowObjectCountInStatus,
@@ -34,7 +35,7 @@ internal sealed class PhaseLoadWorkflowController
         bool isRestoringSearchScope)
     {
         var previousStateFilePath = currentStateFilePath ?? string.Empty;
-        var runtimeSelection = _contextLoadController.ResolveRuntimeSelection(currentSelectedProfileKey);
+        var runtimeSelection = _contextLoadController.ResolveRuntimeSelection(currentSelectedProfileKey, currentSelectedStateName);
         var stateFilePath = runtimeSelection.StateFilePath;
         var loadedStatePath = stateFilePath;
         var persistedState = LoadPersistedState(runtimeSelection, loadedStatePath, _stateController, _log);

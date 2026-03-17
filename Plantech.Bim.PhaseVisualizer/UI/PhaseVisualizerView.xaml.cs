@@ -482,6 +482,38 @@ public partial class PhaseVisualizerView : UserControl
             forceReloadFromModel: false);
     }
 
+    private void StateNameComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_viewModel == null || _isReloadingRows)
+        {
+            return;
+        }
+
+        if (StateNameComboBox.SelectedItem is not string selectedStateName
+            || !_viewModel.TrySelectStateName(selectedStateName))
+        {
+            return;
+        }
+
+        ReloadRows(
+            saveCurrentState: true,
+            restoreShowAllPhasesFromState: true,
+            forceReloadFromModel: false);
+    }
+
+    private void SaveNamedState_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel == null)
+        {
+            return;
+        }
+
+        RowsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+        RowsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+        _viewModel.SetTableLayoutState(CaptureTableLayoutState());
+        _viewModel.SaveNamedState();
+    }
+
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
         if (_viewModel == null)

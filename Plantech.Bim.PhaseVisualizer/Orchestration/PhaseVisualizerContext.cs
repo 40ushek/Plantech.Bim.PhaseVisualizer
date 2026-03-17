@@ -18,11 +18,13 @@ internal sealed class PhaseVisualizerContext
     public PhaseSnapshotMeta SnapshotMeta { get; set; } = new();
     public IReadOnlyList<PhaseRow> Rows { get; set; } = Array.Empty<PhaseRow>();
     public string StateFilePath { get; set; } = string.Empty;
+    public string ActiveStateName { get; set; } = "default";
     public string ConfigPath { get; set; } = string.Empty;
     public string ConfigFingerprint { get; set; } = string.Empty;
     public string ConfigSource { get; set; } = string.Empty;
     public string LogPath { get; set; } = string.Empty;
     public IReadOnlyList<PhaseConfigProfileDescriptor> ConfigProfiles { get; set; } = Array.Empty<PhaseConfigProfileDescriptor>();
+    public IReadOnlyList<string> StateNames { get; set; } = Array.Empty<string>();
     public PhaseConfigProfileDescriptor ActiveProfile { get; set; } = new(
         PhaseConfigPaths.DefaultProfileKey,
         PhaseConfigPaths.DefaultProfileKey,

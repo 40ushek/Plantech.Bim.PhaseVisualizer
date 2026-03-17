@@ -24,9 +24,9 @@ internal sealed class PhaseContextLoadController
         _log = log ?? throw new ArgumentNullException(nameof(log));
     }
 
-    public PhaseRuntimeSelection ResolveRuntimeSelection(string? selectedProfileKey)
+    public PhaseRuntimeSelection ResolveRuntimeSelection(string? selectedProfileKey, string? selectedStateName)
     {
-        return _controller.ResolveRuntimeSelection(_teklaContext, selectedProfileKey, _log);
+        return _controller.ResolveRuntimeSelection(_teklaContext, selectedProfileKey, selectedStateName, _log);
     }
 
     public PhaseContextLoadResult Resolve(
@@ -72,6 +72,7 @@ internal sealed class PhaseContextLoadController
                 showAllPhases: showAllPhases,
                 showObjectCountInStatus: showObjectCountInStatus,
                 selectedProfileKey: runtimeSelection.ProfileSelection.SelectedProfile.Key,
+                selectedStateName: runtimeSelection.SelectedStateName,
                 log: _log);
             _cachedAllPhasesContexts[cacheKey] = context;
         }

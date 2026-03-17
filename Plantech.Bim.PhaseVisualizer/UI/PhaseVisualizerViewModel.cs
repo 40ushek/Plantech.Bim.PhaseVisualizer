@@ -36,11 +36,14 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private readonly DataTable _table = new("PhaseVisualizer");
     private List<PhaseColumnPresentation> _columns = new();
     private List<PhaseConfigProfileDescriptor> _configProfiles = new();
+    private List<string> _stateNames = new();
     private PhaseTableLayoutState? _tableLayoutState;
     private readonly Dictionary<int, PhaseTableRowState> _cachedRowStatesByPhase = new();
     private string _stateFilePath = string.Empty;
     private string _configFingerprint = string.Empty;
     private string _activeConfigProfileKey = string.Empty;
+    private string _activeStateName = "default";
+    private string _requestedStateName = "default";
     private bool _isRestoringShowAllPhases;
     private bool _isRestoringShowObjectCountInStatus;
     private bool _isRestoringUseVisibleViewsForSearch;
@@ -54,6 +57,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private string _presetName = string.Empty;
     private List<string> _presetNames = new();
     private PhaseConfigProfileDescriptor? _selectedConfigProfile;
+    private string _stateNameInput = "default";
 
     public PhaseVisualizerViewModel(
         PhaseVisualizerController controller,
@@ -98,6 +102,8 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     public IReadOnlyList<PhaseColumnPresentation> Columns => _columns;
 
     public IReadOnlyList<PhaseConfigProfileDescriptor> ConfigProfiles => _configProfiles;
+
+    public IReadOnlyList<string> StateNames => _stateNames;
 
     public DataView RowsView => _table.DefaultView;
 
@@ -214,6 +220,22 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         Load(restoreShowAllPhasesFromState: true, forceReloadFromModel: false);
     }
 
+    public string StateNameInput
+    {
+        get => _stateNameInput;
+        set
+        {
+            var normalized = value ?? string.Empty;
+            if (string.Equals(_stateNameInput, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _stateNameInput = normalized;
+            OnPropertyChanged();
+        }
+    }
+
     public bool ShowObjectCountInStatus
     {
         get => _showObjectCountInStatus;
@@ -236,6 +258,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             forceReloadFromModel,
             _stateFilePath,
             SelectedConfigProfile?.Key ?? _activeConfigProfileKey,
+            _requestedStateName,
             ShowAllPhases,
             PhaseSearchScopeMapper.FromUseVisibleViewsFlag(UseVisibleViewsForSearch),
             ShowObjectCountInStatus,
@@ -263,6 +286,66 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         }
 
         SelectedConfigProfile = profile;
+        return true;
+    }
+
+    public bool TrySelectStateName(string? stateName)
+    {
+        var normalizedStateName = PhaseRuntimeSelectionResolver.NormalizeStateName(stateName);
+        if (!_stateNames.Any(name => string.Equals(name, normalizedStateName, StringComparison.OrdinalIgnoreCase))
+            || string.Equals(_activeStateName, normalizedStateName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        _requestedStateName = normalizedStateName;
+        StateNameInput = normalizedStateName;
+        return true;
+    }
+
+    public bool SaveNamedState()
+    {
+        if (SelectedConfigProfile == null && string.IsNullOrWhiteSpace(_activeConfigProfileKey))
+        {
+            return false;
+        }
+
+        var requestedStateName = PhaseRuntimeSelectionResolver.NormalizeStateName(StateNameInput);
+        var selectedProfileKey = SelectedConfigProfile?.Key ?? _activeConfigProfileKey;
+        if (string.IsNullOrWhiteSpace(selectedProfileKey))
+        {
+            return false;
+        }
+
+        CaptureVisibleRowsToCache();
+        var runtimeSelection = _controller.ResolveRuntimeSelection(
+            _teklaContext,
+            selectedProfileKey,
+            requestedStateName,
+            _log);
+        if (string.IsNullOrWhiteSpace(runtimeSelection.StateFilePath))
+        {
+            return false;
+        }
+
+        _statePersistenceController.SaveSnapshot(
+            runtimeSelection.StateFilePath,
+            runtimeSelection.ConfigFingerprint,
+            ShowAllPhases,
+            UseVisibleViewsForSearch,
+            ShowObjectCountInStatus,
+            _cachedRowStatesByPhase.Values.ToList(),
+            _tableLayoutState,
+            _log);
+
+        _stateFilePath = runtimeSelection.StateFilePath;
+        _activeStateName = runtimeSelection.SelectedStateName;
+        _requestedStateName = runtimeSelection.SelectedStateName;
+        _configFingerprint = runtimeSelection.ConfigFingerprint;
+        _stateNames = runtimeSelection.StateNames.ToList();
+        StateNameInput = runtimeSelection.SelectedStateName;
+        OnPropertyChanged(nameof(StateNames));
+        StatusText = $"State '{runtimeSelection.SelectedStateName}' saved.";
         return true;
     }
 
@@ -356,12 +439,17 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
         _columns = result.Columns.ToList();
         _configProfiles = context.ConfigProfiles.ToList();
+        _stateNames = context.StateNames.ToList();
         SelectedConfigProfile = _configProfiles.FirstOrDefault(profile =>
             string.Equals(profile.Key, context.ActiveProfile.Key, StringComparison.OrdinalIgnoreCase))
             ?? context.ActiveProfile;
+        _activeStateName = context.ActiveStateName;
+        _requestedStateName = context.ActiveStateName;
+        StateNameInput = context.ActiveStateName;
         StatusText = result.StatusText;
         UpdateRuntimePaths(context);
         OnPropertyChanged(nameof(ConfigProfiles));
+        OnPropertyChanged(nameof(StateNames));
         OnPropertyChanged(nameof(Columns));
         OnPropertyChanged(nameof(RowsView));
     }

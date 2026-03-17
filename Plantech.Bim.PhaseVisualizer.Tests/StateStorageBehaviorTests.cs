@@ -25,7 +25,8 @@ public sealed class StateStorageBehaviorTests
         var runtimeSelection = resolver.Resolve(
             modelRoot,
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
-            requestedProfileKey: "seva");
+            requestedProfileKey: "seva",
+            requestedStateName: null);
 
         Assert.Equal(
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName, "state.seva.json"),
@@ -46,7 +47,8 @@ public sealed class StateStorageBehaviorTests
         var runtimeSelection = resolver.Resolve(
             modelRoot,
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
-            requestedProfileKey: "seva");
+            requestedProfileKey: "seva",
+            requestedStateName: null);
 
         Assert.Equal(
             Path.Combine(firmRoot, PhaseConfigPaths.ConfigDirectoryName, "state.seva.json"),
@@ -66,7 +68,8 @@ public sealed class StateStorageBehaviorTests
         var runtimeSelection = resolver.Resolve(
             modelRoot,
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
-            requestedProfileKey: null);
+            requestedProfileKey: null,
+            requestedStateName: null);
 
         Assert.Equal(
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName, "state.default.json"),
@@ -158,6 +161,58 @@ public sealed class StateStorageBehaviorTests
             @"D:\model\PT_PhaseVisualizer\state.default.json"));
     }
 
+    [Fact]
+    public void PhaseRuntimeSelectionResolver_DiscoversNamedStatesAndResolvesNamedPath()
+    {
+        using var tempScope = new TempDirectoryScope();
+        var localAppDataRoot = tempScope.CreateSubdirectory("local-app-data");
+        var modelRoot = tempScope.CreateSubdirectory("model");
+        WriteConfigFile(modelRoot, "seva.phase-visualizer.json");
+
+        var configDirectory = Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName);
+        File.WriteAllText(Path.Combine(configDirectory, "state.seva.json"), "{}");
+        File.WriteAllText(Path.Combine(configDirectory, "state.seva.review.json"), "{}");
+        File.WriteAllText(Path.Combine(configDirectory, "state.seva.fabrication.json"), "{}");
+
+        var resolver = CreateResolver(localAppDataRoot);
+        var runtimeSelection = resolver.Resolve(
+            modelRoot,
+            configDirectory,
+            requestedProfileKey: "seva",
+            requestedStateName: "review");
+
+        Assert.Equal("review", runtimeSelection.SelectedStateName);
+        Assert.Collection(
+            runtimeSelection.StateNames,
+            state => Assert.Equal("default", state),
+            state => Assert.Equal("fabrication", state),
+            state => Assert.Equal("review", state));
+        Assert.Equal(
+            Path.Combine(configDirectory, "state.seva.review.json"),
+            runtimeSelection.StateFilePath);
+    }
+
+    [Fact]
+    public void PhaseRuntimeSelectionResolver_FallsBackToDefaultWhenNamedStateIsMissing()
+    {
+        using var tempScope = new TempDirectoryScope();
+        var localAppDataRoot = tempScope.CreateSubdirectory("local-app-data");
+        var modelRoot = tempScope.CreateSubdirectory("model");
+        WriteConfigFile(modelRoot, "seva.phase-visualizer.json");
+
+        var resolver = CreateResolver(localAppDataRoot);
+        var runtimeSelection = resolver.Resolve(
+            modelRoot,
+            Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
+            requestedProfileKey: "seva",
+            requestedStateName: "missing");
+
+        Assert.Equal("default", runtimeSelection.SelectedStateName);
+        Assert.Equal(
+            Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName, "state.seva.json"),
+            runtimeSelection.StateFilePath);
+    }
+
     private static PhaseRuntimeSelection CreateRuntimeSelection(
         TempDirectoryScope tempScope,
         out string localAppDataRoot,
@@ -172,7 +227,8 @@ public sealed class StateStorageBehaviorTests
         return resolver.Resolve(
             modelRoot,
             Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName),
-            requestedProfileKey: null);
+            requestedProfileKey: null,
+            requestedStateName: null);
     }
 
     private static PhaseRuntimeSelectionResolver CreateResolver(string localAppDataRoot, params string[] firmRoots)

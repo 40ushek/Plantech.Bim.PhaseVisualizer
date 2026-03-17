@@ -59,7 +59,13 @@
                         <ColumnDefinition Width="20" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="6" />
-                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
                     <StackPanel
@@ -99,12 +105,35 @@
                         x:Name="ConfigProfileComboBox"
                         Grid.Column="6"
                         MinWidth="150"
-                        MaxWidth="220"
+                        MaxWidth="180"
                         VerticalAlignment="Center"
                         DisplayMemberPath="DisplayName"
                         ItemsSource="{Binding ConfigProfiles}"
                         SelectedItem="{Binding SelectedConfigProfile, Mode=TwoWay}"
                         SelectionChanged="ConfigProfileComboBox_SelectionChanged" />
+
+                    <TextBlock
+                        Grid.Column="8"
+                        VerticalAlignment="Center"
+                        Text="State:" />
+
+                    <ComboBox
+                        x:Name="StateNameComboBox"
+                        Grid.Column="10"
+                        MinWidth="140"
+                        MaxWidth="180"
+                        VerticalAlignment="Center"
+                        IsEditable="True"
+                        IsTextSearchEnabled="False"
+                        ItemsSource="{Binding StateNames}"
+                        Text="{Binding StateNameInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectionChanged="StateNameComboBox_SelectionChanged" />
+
+                    <Button
+                        Grid.Column="12"
+                        Width="64"
+                        Click="SaveNamedState_Click"
+                        Content="Save" />
                 </Grid>
             </DockPanel>
         </StackPanel>

@@ -69,12 +69,12 @@ internal sealed class PhaseVisualizerController
 
     public string ResolveStateFilePath(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        return ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, log).StateFilePath;
+        return ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, selectedStateName: null, log).StateFilePath;
     }
 
     public string ResolveEffectiveConfigDirectory(SynchronizationContext? teklaContext, ILogger? log = null)
     {
-        var runtimeSelection = ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, log);
+        var runtimeSelection = ResolveRuntimeSelection(teklaContext, selectedProfileKey: null, selectedStateName: null, log);
         return _configProvider.ResolveEffectiveConfigDirectory(
             runtimeSelection.ModelConfigDirectory,
             runtimeSelection.ProfileSelection.SelectedProfile.Key,
@@ -90,19 +90,21 @@ internal sealed class PhaseVisualizerController
     internal PhaseRuntimeSelection ResolveRuntimeSelection(
         SynchronizationContext? teklaContext,
         string? selectedProfileKey,
+        string? selectedStateName = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
-        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, selectedStateName, log);
     }
 
     internal PhaseRuntimeSelection ResolveRuntimeSelection(
         string? modelConfigDirectory,
         string? selectedProfileKey,
+        string? selectedStateName = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
-        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        return ResolveRuntimeSelection(contextPaths, selectedProfileKey, selectedStateName, log);
     }
 
     public PhaseVisualizerContext LoadContext(SynchronizationContext? teklaContext, ILogger? log = null)
@@ -114,7 +116,7 @@ internal sealed class PhaseVisualizerController
             showAllPhases: false,
             showObjectCountInStatus: true,
             selectedProfileKey: null,
-            log);
+            log: log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -131,7 +133,7 @@ internal sealed class PhaseVisualizerController
             showAllPhases: includeAllPhases,
             showObjectCountInStatus: true,
             selectedProfileKey: null,
-            log);
+            log: log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -141,6 +143,7 @@ internal sealed class PhaseVisualizerController
         bool showAllPhases,
         bool showObjectCountInStatus,
         string? selectedProfileKey = null,
+        string? selectedStateName = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromTekla(teklaContext, log);
@@ -152,6 +155,7 @@ internal sealed class PhaseVisualizerController
             showAllPhases,
             showObjectCountInStatus,
             selectedProfileKey,
+            selectedStateName,
             log);
     }
 
@@ -171,7 +175,7 @@ internal sealed class PhaseVisualizerController
             showAllPhases: includeAllPhases,
             showObjectCountInStatus: true,
             selectedProfileKey: null,
-            log);
+            log: log);
     }
 
     public PhaseVisualizerContext LoadContext(
@@ -182,6 +186,7 @@ internal sealed class PhaseVisualizerController
         bool showAllPhases,
         bool showObjectCountInStatus,
         string? selectedProfileKey = null,
+        string? selectedStateName = null,
         ILogger? log = null)
     {
         var contextPaths = ResolveContextPathsFromConfigDirectory(modelConfigDirectory);
@@ -193,6 +198,7 @@ internal sealed class PhaseVisualizerController
             showAllPhases,
             showObjectCountInStatus,
             selectedProfileKey,
+            selectedStateName,
             log);
     }
 
@@ -204,9 +210,10 @@ internal sealed class PhaseVisualizerController
         bool showAllPhases,
         bool showObjectCountInStatus,
         string? selectedProfileKey,
+        string? selectedStateName,
         ILogger? log = null)
     {
-        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, selectedStateName, log);
         LogPathDiagnosticsOnce(contextPaths, runtimeSelection.ProfileSelection.SelectedProfile.Key, log);
 
         var configLoad = _configProvider.LoadResolved(
@@ -237,11 +244,13 @@ internal sealed class PhaseVisualizerController
             Config = config,
             Rows = rows,
             StateFilePath = runtimeSelection.StateFilePath,
+            ActiveStateName = runtimeSelection.SelectedStateName,
             ConfigPath = configLoad.EffectiveConfigPath,
             ConfigFingerprint = PhaseConfigFingerprint.ComputeFromFile(configLoad.EffectiveConfigPath),
             ConfigSource = configLoad.SourceName,
             LogPath = PhaseVisualizerLogConfigurator.ResolveLogPath(effectiveConfigDirectory),
             ConfigProfiles = configLoad.Catalog.Profiles,
+            StateNames = runtimeSelection.StateNames,
             ActiveProfile = configLoad.SelectedProfile,
             SnapshotMeta = new PhaseSnapshotMeta
             {
@@ -281,7 +290,7 @@ internal sealed class PhaseVisualizerController
         var modelPath = contextPaths.ModelPath;
         var firmPath = ResolveFirmPath();
         var environmentPath = ResolveEnvironmentPath();
-        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, log);
+        var runtimeSelection = ResolveRuntimeSelection(contextPaths, selectedProfileKey, selectedStateName: null, log);
         var configResolution = _configProvider.ResolveConfigResolution(
             contextPaths.ModelConfigDirectory,
             runtimeSelection.ProfileSelection.SelectedProfile.Key,
@@ -495,12 +504,14 @@ internal sealed class PhaseVisualizerController
     private PhaseRuntimeSelection ResolveRuntimeSelection(
         ContextPaths contextPaths,
         string? selectedProfileKey,
+        string? selectedStateName,
         ILogger? log)
     {
         return _runtimeSelectionResolver.Resolve(
             contextPaths.ModelPath,
             contextPaths.ModelConfigDirectory,
             selectedProfileKey,
+            selectedStateName,
             log);
     }
 
