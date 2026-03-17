@@ -32,14 +32,25 @@ internal sealed class PhaseRuntimeSelectionResolver
         ILogger? log = null)
     {
         var localUserStoragePaths = _localUserStoragePathResolver.ResolveBase(modelPath);
-        var rememberedProfileKey = _sessionStore.LoadSelectedProfileKey(localUserStoragePaths.SessionFilePath, log);
+        var rememberedSession = _sessionStore.LoadSession(localUserStoragePaths.SessionFilePath, log);
+        var rememberedProfileKey = rememberedSession.SelectedProfileKey?.Trim() ?? string.Empty;
         var profileSelection = _configLoader.ResolveSelection(
             modelConfigDirectory,
             requestedProfileKey,
             rememberedProfileKey);
 
+        var effectiveRequestedStateName = requestedStateName;
+        if (string.IsNullOrWhiteSpace(effectiveRequestedStateName)
+            && string.Equals(
+                profileSelection.SelectedProfile.Key,
+                rememberedProfileKey,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            effectiveRequestedStateName = rememberedSession.SelectedStateName;
+        }
+
         var stateNames = DiscoverStateNames(modelConfigDirectory, profileSelection);
-        var selectedStateName = SelectStateName(requestedStateName, stateNames, allowMissingRequestedStateName);
+        var selectedStateName = SelectStateName(effectiveRequestedStateName, stateNames, allowMissingRequestedStateName);
         if (allowMissingRequestedStateName
             && !stateNames.Any(name => string.Equals(name, selectedStateName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -51,9 +62,10 @@ internal sealed class PhaseRuntimeSelectionResolver
         }
         var stateFilePath = ResolveColocatedStateFilePath(modelConfigDirectory, profileSelection, selectedStateName);
         var configFingerprint = PhaseConfigFingerprint.ComputeFromFile(profileSelection.SelectedProfile.FilePath);
-        _sessionStore.SaveSelectedProfileKey(
+        _sessionStore.SaveSelection(
             localUserStoragePaths.SessionFilePath,
             profileSelection.SelectedProfile.Key,
+            selectedStateName,
             log);
 
         return new PhaseRuntimeSelection(

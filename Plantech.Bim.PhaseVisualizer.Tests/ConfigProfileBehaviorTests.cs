@@ -120,6 +120,48 @@ public sealed class ConfigProfileBehaviorTests
         Assert.Equal(
             "design",
             sessionStore.LoadSelectedProfileKey(rememberedSelection.LocalUserStoragePaths.SessionFilePath));
+        Assert.Equal(
+            "default",
+            sessionStore.LoadSelectedStateName(rememberedSelection.LocalUserStoragePaths.SessionFilePath));
+    }
+
+    [Fact]
+    public void PhaseRuntimeSelectionResolver_RemembersLastSelectedStateForRememberedProfile()
+    {
+        using var tempScope = new TempDirectoryScope();
+        var localAppDataRoot = tempScope.CreateSubdirectory("local-app-data");
+        var modelRoot = tempScope.CreateSubdirectory("model");
+
+        WriteConfigFile(modelRoot, "default.phase-visualizer.json");
+        WriteConfigFile(modelRoot, "design.phase-visualizer.json");
+        var configDirectory = Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName);
+        File.WriteAllText(Path.Combine(configDirectory, "state.design.review.json"), "{}");
+
+        var loader = CreateLoader();
+        var sessionStore = new PhaseConfigProfileSessionStore();
+        var resolver = new PhaseRuntimeSelectionResolver(
+            loader,
+            new PhaseLocalUserStoragePathResolver(localAppDataRoot),
+            sessionStore);
+        var modelConfigDirectory = Path.Combine(modelRoot, PhaseConfigPaths.ConfigDirectoryName);
+
+        resolver.Resolve(
+            modelRoot,
+            modelConfigDirectory,
+            requestedProfileKey: "design",
+            requestedStateName: "review");
+        var rememberedSelection = resolver.Resolve(
+            modelRoot,
+            modelConfigDirectory,
+            requestedProfileKey: null,
+            requestedStateName: null);
+
+        Assert.Equal("design", rememberedSelection.ProfileSelection.SelectedProfile.Key);
+        Assert.Equal("review", rememberedSelection.SelectedStateName);
+        Assert.EndsWith(
+            Path.Combine(PhaseConfigPaths.ConfigDirectoryName, "state.design.review.json"),
+            rememberedSelection.StateFilePath,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static PhaseTableConfigLoader CreateLoader(params string[] firmRoots)

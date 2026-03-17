@@ -7,11 +7,11 @@ namespace Plantech.Bim.PhaseVisualizer.Services;
 
 internal sealed class PhaseConfigProfileSessionStore
 {
-    public string LoadSelectedProfileKey(string? sessionFilePath, ILogger? log = null)
+    public PhaseConfigProfileSession LoadSession(string? sessionFilePath, ILogger? log = null)
     {
         if (string.IsNullOrWhiteSpace(sessionFilePath) || !File.Exists(sessionFilePath))
         {
-            return string.Empty;
+            return new PhaseConfigProfileSession();
         }
 
         try
@@ -19,20 +19,35 @@ internal sealed class PhaseConfigProfileSessionStore
             var json = File.ReadAllText(sessionFilePath);
             if (string.IsNullOrWhiteSpace(json))
             {
-                return string.Empty;
+                return new PhaseConfigProfileSession();
             }
 
-            var session = JsonConvert.DeserializeObject<PhaseConfigProfileSession>(json);
-            return session?.SelectedProfileKey?.Trim() ?? string.Empty;
+            return JsonConvert.DeserializeObject<PhaseConfigProfileSession>(json)
+                ?? new PhaseConfigProfileSession();
         }
         catch (Exception ex)
         {
             log?.Warning(ex, "PhaseVisualizer session load failed at {Path}.", sessionFilePath);
-            return string.Empty;
+            return new PhaseConfigProfileSession();
         }
     }
 
-    public void SaveSelectedProfileKey(string? sessionFilePath, string? profileKey, ILogger? log = null)
+    public string LoadSelectedProfileKey(string? sessionFilePath, ILogger? log = null)
+    {
+        return LoadSession(sessionFilePath, log).SelectedProfileKey?.Trim() ?? string.Empty;
+    }
+
+    public string LoadSelectedStateName(string? sessionFilePath, ILogger? log = null)
+    {
+        return PhaseRuntimeSelectionResolver.NormalizeStateName(
+            LoadSession(sessionFilePath, log).SelectedStateName);
+    }
+
+    public void SaveSelection(
+        string? sessionFilePath,
+        string? profileKey,
+        string? stateName,
+        ILogger? log = null)
     {
         if (string.IsNullOrWhiteSpace(sessionFilePath))
         {
@@ -50,6 +65,7 @@ internal sealed class PhaseConfigProfileSessionStore
             var session = new PhaseConfigProfileSession
             {
                 SelectedProfileKey = profileKey?.Trim() ?? string.Empty,
+                SelectedStateName = PhaseRuntimeSelectionResolver.NormalizeStateName(stateName),
             };
             File.WriteAllText(sessionFilePath, JsonConvert.SerializeObject(session, Formatting.Indented));
         }
@@ -63,4 +79,6 @@ internal sealed class PhaseConfigProfileSessionStore
 internal sealed class PhaseConfigProfileSession
 {
     public string SelectedProfileKey { get; set; } = string.Empty;
+
+    public string SelectedStateName { get; set; } = "default";
 }
