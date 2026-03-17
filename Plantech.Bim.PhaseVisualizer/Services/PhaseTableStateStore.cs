@@ -36,6 +36,7 @@ internal sealed class PhaseTableStateStore
                 return null;
             }
 
+            state.ConfigFingerprint ??= string.Empty;
             state.Rows ??= new();
             state.Presets ??= new();
             foreach (var preset in state.Presets)

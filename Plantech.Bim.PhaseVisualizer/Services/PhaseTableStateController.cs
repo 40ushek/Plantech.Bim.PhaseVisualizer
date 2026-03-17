@@ -23,7 +23,18 @@ internal sealed class PhaseTableStateController
         return _stateStore.Load(stateFilePath, log);
     }
 
-    public void Save(string? stateFilePath, PhaseTableState state, ILogger log)
+    public PhaseTableState? LoadCompatible(string? stateFilePath, string? configFingerprint, ILogger log)
+    {
+        var state = Load(stateFilePath, log);
+        if (state == null)
+        {
+            return null;
+        }
+
+        return HasCompatibleFingerprint(state, configFingerprint) ? state : null;
+    }
+
+    public void Save(string? stateFilePath, PhaseTableState state, string? configFingerprint, ILogger log)
     {
         if (string.IsNullOrWhiteSpace(stateFilePath) || state == null)
         {
@@ -31,7 +42,26 @@ internal sealed class PhaseTableStateController
         }
 
         state.Version = 2;
+        state.ConfigFingerprint = configFingerprint ?? string.Empty;
         _stateStore.Save(stateFilePath, state, log);
+    }
+
+    public static bool HasCompatibleFingerprint(PhaseTableState? state, string? configFingerprint)
+    {
+        if (state == null)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(configFingerprint))
+        {
+            return true;
+        }
+
+        return string.Equals(
+            state.ConfigFingerprint ?? string.Empty,
+            configFingerprint,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     public bool TryGetRestoredShowAllPhases(

@@ -9,6 +9,7 @@ internal sealed class PhaseStateSnapshotController
 {
     public PhaseTableState Build(
         PhaseTableState? persistedState,
+        string? configFingerprint,
         bool showAllPhases,
         bool useVisibleViewsForSearch,
         bool showObjectCountInStatus,
@@ -16,6 +17,7 @@ internal sealed class PhaseStateSnapshotController
         PhaseTableLayoutState? layout)
     {
         var state = persistedState ?? new PhaseTableState();
+        state.ConfigFingerprint = configFingerprint ?? string.Empty;
         state.ShowAllPhases = showAllPhases;
         state.UseVisibleViewsForSearch = useVisibleViewsForSearch;
         state.ShowObjectCountInStatus = showObjectCountInStatus;

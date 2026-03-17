@@ -5,6 +5,7 @@ namespace Plantech.Bim.PhaseVisualizer.Domain;
 internal sealed class PhaseTableState
 {
     public int Version { get; set; } = 2;
+    public string ConfigFingerprint { get; set; } = string.Empty;
     public bool? ShowAllPhases { get; set; }
     public bool? UseVisibleViewsForSearch { get; set; }
     public bool? ShowObjectCountInStatus { get; set; }

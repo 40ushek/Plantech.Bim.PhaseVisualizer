@@ -39,6 +39,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
     private PhaseTableLayoutState? _tableLayoutState;
     private readonly Dictionary<int, PhaseTableRowState> _cachedRowStatesByPhase = new();
     private string _stateFilePath = string.Empty;
+    private string _configFingerprint = string.Empty;
     private string _activeConfigProfileKey = string.Empty;
     private bool _isRestoringShowAllPhases;
     private bool _isRestoringShowObjectCountInStatus;
@@ -376,6 +377,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         var presetRows = _rowStateCacheController.CloneRowsOrdered(_cachedRowStatesByPhase.Values);
         var saveResult = _presetMutationController.TrySave(
             context.StateFilePath,
+            context.ConfigFingerprint,
             context.PresetName,
             ShowAllPhases,
             UseVisibleViewsForSearch,
@@ -400,7 +402,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
             return false;
         }
 
-        var state = _stateController.Load(context.StateFilePath, _log);
+        var state = _stateController.LoadCompatible(context.StateFilePath, context.ConfigFingerprint, _log);
         ApplyPresetNamesState(state);
         var loadedPreset = _presetLoadController.TryLoad(
             state,
@@ -442,6 +444,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
         var deleteResult = _presetMutationController.TryDelete(
             context.StateFilePath,
+            context.ConfigFingerprint,
             context.PresetName,
             _log);
         if (!deleteResult.IsSuccess || deleteResult.State == null)
@@ -467,6 +470,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         CaptureVisibleRowsToCache();
         var state = _statePersistenceController.SaveSnapshot(
             _stateFilePath,
+            _configFingerprint,
             ShowAllPhases,
             UseVisibleViewsForSearch,
             ShowObjectCountInStatus,
@@ -514,7 +518,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
 
     private bool TryCreatePresetOperationContext(out PhasePresetOperationContext context)
     {
-        return _presetOperationContextController.TryCreate(PresetName, _stateFilePath, out context);
+        return _presetOperationContextController.TryCreate(PresetName, _stateFilePath, _configFingerprint, out context);
     }
 
     private void CompletePresetMutation(
@@ -538,6 +542,7 @@ internal sealed class PhaseVisualizerViewModel : INotifyPropertyChanged
         var configSource = string.IsNullOrWhiteSpace(context.ConfigSource)
             ? "unknown"
             : context.ConfigSource;
+        _configFingerprint = context.ConfigFingerprint ?? string.Empty;
         ConfigPathText = $"Config: {configPath} (profile: {profileName}, source: {configSource})";
 
         var logPath = string.IsNullOrWhiteSpace(context.LogPath)

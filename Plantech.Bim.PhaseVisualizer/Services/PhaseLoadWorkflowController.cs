@@ -36,7 +36,7 @@ internal sealed class PhaseLoadWorkflowController
         var runtimeSelection = _contextLoadController.ResolveRuntimeSelection(currentSelectedProfileKey);
         var stateFilePath = runtimeSelection.StateFilePath;
         var loadedStatePath = stateFilePath;
-        var persistedState = LoadPersistedState(runtimeSelection, loadedStatePath);
+        var persistedState = LoadPersistedState(runtimeSelection, loadedStatePath, _stateController, _log);
 
         var shouldApplyShowAllPhases = _stateController.TryGetRestoredShowAllPhases(
             restoreFromState,
@@ -82,7 +82,7 @@ internal sealed class PhaseLoadWorkflowController
         stateFilePath = resolvedContext.StateFilePath;
         if (!string.Equals(loadedStatePath, stateFilePath, StringComparison.OrdinalIgnoreCase))
         {
-            persistedState = LoadPersistedState(runtimeSelection, stateFilePath);
+            persistedState = LoadPersistedState(runtimeSelection, stateFilePath, _stateController, _log);
         }
 
         return new PhaseLoadWorkflowResult(
@@ -98,21 +98,29 @@ internal sealed class PhaseLoadWorkflowController
             effectiveSearchScope);
     }
 
-    private PhaseTableState? LoadPersistedState(PhaseRuntimeSelection runtimeSelection, string stateFilePath)
+    internal static PhaseTableState? LoadPersistedState(
+        PhaseRuntimeSelection runtimeSelection,
+        string stateFilePath,
+        PhaseTableStateController stateController,
+        ILogger log)
     {
-        var persistedState = _stateController.Load(stateFilePath, _log);
+        if (runtimeSelection == null)
+        {
+            throw new ArgumentNullException(nameof(runtimeSelection));
+        }
+
+        if (stateController == null)
+        {
+            throw new ArgumentNullException(nameof(stateController));
+        }
+
+        var persistedState = stateController.LoadCompatible(stateFilePath, runtimeSelection.ConfigFingerprint, log);
         if (persistedState != null)
         {
             return persistedState;
         }
 
-        var selectedProfileKey = runtimeSelection.ProfileSelection.SelectedProfile.Key;
-        if (!string.Equals(selectedProfileKey, Configuration.PhaseConfigPaths.DefaultProfileKey, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return _stateController.Load(runtimeSelection.LocalUserStoragePaths.LegacyStateFilePath, _log);
+        return null;
     }
 }
 

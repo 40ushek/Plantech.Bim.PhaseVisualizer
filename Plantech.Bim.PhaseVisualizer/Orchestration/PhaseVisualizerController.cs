@@ -15,8 +15,6 @@ namespace Plantech.Bim.PhaseVisualizer.Orchestration;
 
 internal sealed class PhaseVisualizerController
 {
-    private const string StateFileName = "phase-visualizer.state.json";
-
     private readonly PhaseTableConfigLoader _configProvider;
     private readonly TeklaPhaseDataProvider _dataProvider;
     private readonly PhaseTableBuilder _tableBuilder;
@@ -240,6 +238,7 @@ internal sealed class PhaseVisualizerController
             Rows = rows,
             StateFilePath = runtimeSelection.StateFilePath,
             ConfigPath = configLoad.EffectiveConfigPath,
+            ConfigFingerprint = PhaseConfigFingerprint.ComputeFromFile(configLoad.EffectiveConfigPath),
             ConfigSource = configLoad.SourceName,
             LogPath = PhaseVisualizerLogConfigurator.ResolveLogPath(effectiveConfigDirectory),
             ConfigProfiles = configLoad.Catalog.Profiles,
@@ -392,10 +391,7 @@ internal sealed class PhaseVisualizerController
     {
         var safeModelConfigDirectory = modelConfigDirectory ?? string.Empty;
         var modelPath = ResolveModelPathFromConfigDirectory(safeModelConfigDirectory);
-        return new ContextPaths(
-            modelPath,
-            safeModelConfigDirectory,
-            BuildLegacyStateFilePath(modelPath));
+        return new ContextPaths(modelPath, safeModelConfigDirectory);
     }
 
     private static string ResolveModelPath(SynchronizationContext? teklaContext, ILogger? log = null)
@@ -426,16 +422,6 @@ internal sealed class PhaseVisualizerController
         }
 
         return Path.Combine(modelPath, PhaseConfigPaths.ConfigDirectoryName);
-    }
-
-    private static string BuildLegacyStateFilePath(string modelPath)
-    {
-        if (string.IsNullOrWhiteSpace(modelPath))
-        {
-            return string.Empty;
-        }
-
-        return Path.Combine(modelPath, "attributes", StateFileName);
     }
 
     private static string ResolveModelPathFromConfigDirectory(string? modelConfigDirectory)
@@ -520,23 +506,18 @@ internal sealed class PhaseVisualizerController
 
     private readonly struct ContextPaths
     {
-        public ContextPaths(string modelPath, string modelConfigDirectory, string legacyStateFilePath)
+        public ContextPaths(string modelPath, string modelConfigDirectory)
         {
             ModelPath = modelPath;
             ModelConfigDirectory = modelConfigDirectory;
-            LegacyStateFilePath = legacyStateFilePath;
         }
 
         public string ModelPath { get; }
         public string ModelConfigDirectory { get; }
-        public string LegacyStateFilePath { get; }
 
         public static ContextPaths FromModelPath(string modelPath)
         {
-            return new ContextPaths(
-                modelPath,
-                BuildModelConfigDirectory(modelPath),
-                BuildLegacyStateFilePath(modelPath));
+            return new ContextPaths(modelPath, BuildModelConfigDirectory(modelPath));
         }
     }
 }

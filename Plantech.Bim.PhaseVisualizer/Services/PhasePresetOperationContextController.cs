@@ -7,6 +7,7 @@ internal sealed class PhasePresetOperationContextController
     public bool TryCreate(
         string? presetName,
         string? stateFilePath,
+        string? configFingerprint,
         out PhasePresetOperationContext context)
     {
         context = PhasePresetOperationContext.Empty;
@@ -24,22 +25,26 @@ internal sealed class PhasePresetOperationContextController
 
         context = new PhasePresetOperationContext(
             normalizedPresetName,
-            stateFilePath);
+            stateFilePath,
+            configFingerprint);
         return true;
     }
 }
 
 internal readonly struct PhasePresetOperationContext
 {
-    public static readonly PhasePresetOperationContext Empty = new(string.Empty, string.Empty);
+    public static readonly PhasePresetOperationContext Empty = new(string.Empty, string.Empty, string.Empty);
 
-    public PhasePresetOperationContext(string presetName, string stateFilePath)
+    public PhasePresetOperationContext(string presetName, string stateFilePath, string? configFingerprint)
     {
         PresetName = presetName ?? string.Empty;
         StateFilePath = stateFilePath ?? string.Empty;
+        ConfigFingerprint = configFingerprint ?? string.Empty;
     }
 
     public string PresetName { get; }
 
     public string StateFilePath { get; }
+
+    public string ConfigFingerprint { get; }
 }

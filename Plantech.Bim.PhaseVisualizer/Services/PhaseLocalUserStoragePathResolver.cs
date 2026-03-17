@@ -33,25 +33,7 @@ internal sealed class PhaseLocalUserStoragePathResolver
         return new PhaseLocalUserStoragePaths(
             modelKey,
             baseDirectory,
-            Path.Combine(baseDirectory, "session.json"),
-            Path.Combine(normalizedModelPath, "attributes", "phase-visualizer.state.json"));
-    }
-
-    public string ResolveStateFilePath(PhaseLocalUserStoragePaths basePaths, string? profileKey)
-    {
-        if (basePaths == null)
-        {
-            throw new ArgumentNullException(nameof(basePaths));
-        }
-
-        if (string.IsNullOrWhiteSpace(basePaths.BaseDirectory))
-        {
-            return string.Empty;
-        }
-
-        return Path.Combine(
-            basePaths.BaseDirectory,
-            $"state.{SanitizeFileSegment(profileKey)}.json");
+            Path.Combine(baseDirectory, "session.json"));
     }
 
     private static string NormalizeModelPath(string? modelPath)
@@ -85,21 +67,6 @@ internal sealed class PhaseLocalUserStoragePathResolver
         return string.Concat(hashBytes.Take(12).Select(b => b.ToString("x2")));
     }
 
-    private static string SanitizeFileSegment(string? value)
-    {
-        var normalized = string.IsNullOrWhiteSpace(value)
-            ? "default"
-            : value!.Trim();
-        var invalid = Path.GetInvalidFileNameChars();
-        var sanitized = new StringBuilder(normalized.Length);
-
-        foreach (var character in normalized)
-        {
-            sanitized.Append(invalid.Contains(character) ? '_' : character);
-        }
-
-        return sanitized.Length == 0 ? "default" : sanitized.ToString();
-    }
 }
 
 internal sealed class PhaseLocalUserStoragePaths
@@ -107,13 +74,11 @@ internal sealed class PhaseLocalUserStoragePaths
     public PhaseLocalUserStoragePaths(
         string modelKey,
         string baseDirectory,
-        string sessionFilePath,
-        string legacyStateFilePath)
+        string sessionFilePath)
     {
         ModelKey = modelKey ?? string.Empty;
         BaseDirectory = baseDirectory ?? string.Empty;
         SessionFilePath = sessionFilePath ?? string.Empty;
-        LegacyStateFilePath = legacyStateFilePath ?? string.Empty;
     }
 
     public string ModelKey { get; }
@@ -121,6 +86,4 @@ internal sealed class PhaseLocalUserStoragePaths
     public string BaseDirectory { get; }
 
     public string SessionFilePath { get; }
-
-    public string LegacyStateFilePath { get; }
 }

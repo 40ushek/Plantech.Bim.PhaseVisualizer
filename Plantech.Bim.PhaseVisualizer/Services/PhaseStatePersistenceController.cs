@@ -21,6 +21,7 @@ internal sealed class PhaseStatePersistenceController
 
     public PhaseTableState? SaveSnapshot(
         string? stateFilePath,
+        string? configFingerprint,
         bool showAllPhases,
         bool useVisibleViewsForSearch,
         bool showObjectCountInStatus,
@@ -33,16 +34,17 @@ internal sealed class PhaseStatePersistenceController
             return null;
         }
 
-        var persistedState = _stateController.Load(stateFilePath, log);
+        var persistedState = _stateController.LoadCompatible(stateFilePath, configFingerprint, log);
         var snapshot = _snapshotController.Build(
             persistedState,
+            configFingerprint,
             showAllPhases,
             useVisibleViewsForSearch,
             showObjectCountInStatus,
             (rows ?? Array.Empty<PhaseTableRowState>()).ToList(),
             layout);
 
-        _stateController.Save(stateFilePath, snapshot, log);
+        _stateController.Save(stateFilePath, snapshot, configFingerprint, log);
         return snapshot;
     }
 }

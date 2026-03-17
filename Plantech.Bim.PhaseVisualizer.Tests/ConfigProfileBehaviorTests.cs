@@ -69,26 +69,17 @@ public sealed class ConfigProfileBehaviorTests
     }
 
     [Fact]
-    public void PhaseLocalUserStoragePathResolver_UsesLocalUserStateFilesPerProfile()
+    public void PhaseLocalUserStoragePathResolver_UsesLocalSessionStorage()
     {
         using var tempScope = new TempDirectoryScope();
         var localAppDataRoot = tempScope.CreateSubdirectory("local-app-data");
         var modelRoot = tempScope.CreateSubdirectory("model");
-        Directory.CreateDirectory(Path.Combine(modelRoot, "attributes"));
 
         var resolver = new PhaseLocalUserStoragePathResolver(localAppDataRoot);
         var basePaths = resolver.ResolveBase(modelRoot);
 
-        var defaultStatePath = resolver.ResolveStateFilePath(basePaths, "default");
-        var productionStatePath = resolver.ResolveStateFilePath(basePaths, "production");
-
         Assert.StartsWith(localAppDataRoot, basePaths.BaseDirectory, StringComparison.OrdinalIgnoreCase);
-        Assert.EndsWith("state.default.json", defaultStatePath, StringComparison.OrdinalIgnoreCase);
-        Assert.EndsWith("state.production.json", productionStatePath, StringComparison.OrdinalIgnoreCase);
-        Assert.NotEqual(defaultStatePath, productionStatePath);
-        Assert.Equal(
-            Path.Combine(modelRoot, "attributes", "phase-visualizer.state.json"),
-            basePaths.LegacyStateFilePath);
+        Assert.EndsWith("session.json", basePaths.SessionFilePath, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -120,7 +111,10 @@ public sealed class ConfigProfileBehaviorTests
 
         Assert.Equal("design", selectedDesign.ProfileSelection.SelectedProfile.Key);
         Assert.Equal("design", rememberedSelection.ProfileSelection.SelectedProfile.Key);
-        Assert.EndsWith("state.design.json", rememberedSelection.StateFilePath, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(
+            Path.Combine(PhaseConfigPaths.ConfigDirectoryName, "state.design.json"),
+            rememberedSelection.StateFilePath,
+            StringComparison.OrdinalIgnoreCase);
         Assert.Equal(
             "design",
             sessionStore.LoadSelectedProfileKey(rememberedSelection.LocalUserStoragePaths.SessionFilePath));

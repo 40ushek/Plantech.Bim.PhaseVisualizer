@@ -1,6 +1,7 @@
 using Plantech.Bim.PhaseVisualizer.Configuration;
 using Serilog;
 using System;
+using System.IO;
 
 namespace Plantech.Bim.PhaseVisualizer.Services;
 
@@ -33,9 +34,8 @@ internal sealed class PhaseRuntimeSelectionResolver
             requestedProfileKey,
             rememberedProfileKey);
 
-        var stateFilePath = _localUserStoragePathResolver.ResolveStateFilePath(
-            localUserStoragePaths,
-            profileSelection.SelectedProfile.Key);
+        var stateFilePath = ResolveColocatedStateFilePath(modelConfigDirectory, profileSelection);
+        var configFingerprint = PhaseConfigFingerprint.ComputeFromFile(profileSelection.SelectedProfile.FilePath);
         _sessionStore.SaveSelectedProfileKey(
             localUserStoragePaths.SessionFilePath,
             profileSelection.SelectedProfile.Key,
@@ -46,7 +46,36 @@ internal sealed class PhaseRuntimeSelectionResolver
             modelConfigDirectory,
             localUserStoragePaths,
             stateFilePath,
+            configFingerprint,
             profileSelection);
+    }
+
+    internal string ResolveColocatedStateFilePath(
+        string modelConfigDirectory,
+        PhaseConfigProfileSelection profileSelection)
+    {
+        if (profileSelection == null)
+        {
+            throw new ArgumentNullException(nameof(profileSelection));
+        }
+
+        var selectedProfile = profileSelection.SelectedProfile;
+        var configDirectory = selectedProfile.HasPhysicalFile
+            ? Path.GetDirectoryName(selectedProfile.FilePath)
+            : _configLoader.ResolveEffectiveConfigDirectory(
+                modelConfigDirectory,
+                selectedProfile.Key,
+                rememberedProfileKey: null);
+
+        if (string.IsNullOrWhiteSpace(configDirectory))
+        {
+            return string.Empty;
+        }
+
+        var profileKey = string.IsNullOrWhiteSpace(selectedProfile.Key)
+            ? PhaseConfigPaths.DefaultProfileKey
+            : selectedProfile.Key;
+        return Path.Combine(configDirectory, $"state.{profileKey}.json");
     }
 }
 
@@ -57,12 +86,14 @@ internal sealed class PhaseRuntimeSelection
         string modelConfigDirectory,
         PhaseLocalUserStoragePaths localUserStoragePaths,
         string stateFilePath,
+        string configFingerprint,
         PhaseConfigProfileSelection profileSelection)
     {
         ModelPath = modelPath ?? string.Empty;
         ModelConfigDirectory = modelConfigDirectory ?? string.Empty;
         LocalUserStoragePaths = localUserStoragePaths ?? throw new ArgumentNullException(nameof(localUserStoragePaths));
         StateFilePath = stateFilePath ?? string.Empty;
+        ConfigFingerprint = configFingerprint ?? string.Empty;
         ProfileSelection = profileSelection ?? throw new ArgumentNullException(nameof(profileSelection));
     }
 
@@ -73,6 +104,8 @@ internal sealed class PhaseRuntimeSelection
     public PhaseLocalUserStoragePaths LocalUserStoragePaths { get; }
 
     public string StateFilePath { get; }
+
+    public string ConfigFingerprint { get; }
 
     public PhaseConfigProfileSelection ProfileSelection { get; }
 }

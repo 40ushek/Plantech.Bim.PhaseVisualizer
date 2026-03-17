@@ -20,6 +20,7 @@ internal sealed class PhasePresetMutationController
 
     public PhasePresetMutationResult TrySave(
         string? stateFilePath,
+        string? configFingerprint,
         string? presetName,
         bool showAllPhases,
         bool useVisibleViewsForSearch,
@@ -38,7 +39,7 @@ internal sealed class PhasePresetMutationController
             return PhasePresetMutationResult.Failure();
         }
 
-        var state = _stateController.Load(stateFilePath, log) ?? new PhaseTableState();
+        var state = _stateController.LoadCompatible(stateFilePath, configFingerprint, log) ?? new PhaseTableState();
         if (!_presetController.SaveOrUpdate(
                 state,
                 normalizedPresetName,
@@ -49,12 +50,13 @@ internal sealed class PhasePresetMutationController
             return PhasePresetMutationResult.Failure();
         }
 
-        _stateController.Save(stateFilePath, state, log);
+        _stateController.Save(stateFilePath, state, configFingerprint, log);
         return PhasePresetMutationResult.Success(state, normalizedPresetName);
     }
 
     public PhasePresetMutationResult TryDelete(
         string? stateFilePath,
+        string? configFingerprint,
         string? presetName,
         ILogger log)
     {
@@ -70,13 +72,13 @@ internal sealed class PhasePresetMutationController
             return PhasePresetMutationResult.Failure();
         }
 
-        var state = _stateController.Load(stateFilePath, log);
+        var state = _stateController.LoadCompatible(stateFilePath, configFingerprint, log);
         if (state == null || !_presetController.Delete(state, normalizedPresetName))
         {
             return PhasePresetMutationResult.Failure();
         }
 
-        _stateController.Save(stateFilePath, state, log);
+        _stateController.Save(stateFilePath, state, configFingerprint, log);
         return PhasePresetMutationResult.Success(state, normalizedPresetName);
     }
 }
