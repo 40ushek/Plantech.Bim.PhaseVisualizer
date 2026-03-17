@@ -33,6 +33,7 @@ internal sealed class PhaseLoadWorkflowController
         bool isRestoringShowObjectCountInStatus,
         bool isRestoringSearchScope)
     {
+        var previousStateFilePath = currentStateFilePath ?? string.Empty;
         var runtimeSelection = _contextLoadController.ResolveRuntimeSelection(currentSelectedProfileKey);
         var stateFilePath = runtimeSelection.StateFilePath;
         var loadedStatePath = stateFilePath;
@@ -78,7 +79,7 @@ internal sealed class PhaseLoadWorkflowController
             effectiveShowAllPhases,
             effectiveSearchScope,
             effectiveShowObjectCountInStatus,
-            stateFilePath);
+            previousStateFilePath);
         stateFilePath = resolvedContext.StateFilePath;
         if (!string.Equals(loadedStatePath, stateFilePath, StringComparison.OrdinalIgnoreCase))
         {

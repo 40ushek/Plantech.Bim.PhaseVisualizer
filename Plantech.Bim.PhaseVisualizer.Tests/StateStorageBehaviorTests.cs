@@ -147,6 +147,17 @@ public sealed class StateStorageBehaviorTests
         Assert.Equal(30, persistedState.Rows[0].PhaseNumber);
     }
 
+    [Fact]
+    public void PhaseContextLoadController_HasStateFilePathChanged_ReturnsTrueForDifferentProfiles()
+    {
+        Assert.True(PhaseContextLoadController.HasStateFilePathChanged(
+            @"D:\model\PT_PhaseVisualizer\state.default.json",
+            @"D:\model\PT_PhaseVisualizer\state.seva.json"));
+        Assert.False(PhaseContextLoadController.HasStateFilePathChanged(
+            @"D:\model\PT_PhaseVisualizer\state.default.json",
+            @"D:\model\PT_PhaseVisualizer\state.default.json"));
+    }
+
     private static PhaseRuntimeSelection CreateRuntimeSelection(
         TempDirectoryScope tempScope,
         out string localAppDataRoot,

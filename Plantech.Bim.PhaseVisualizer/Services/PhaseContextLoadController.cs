@@ -35,24 +35,24 @@ internal sealed class PhaseContextLoadController
         bool showAllPhases,
         PhaseSearchScope searchScope,
         bool showObjectCountInStatus,
-        string? stateFilePath)
+        string? previousStateFilePath)
     {
         if (runtimeSelection == null)
         {
             throw new ArgumentNullException(nameof(runtimeSelection));
         }
 
-        var nextStateFilePath = stateFilePath ?? string.Empty;
+        var nextStateFilePath = previousStateFilePath ?? string.Empty;
         var currentStateFilePath = runtimeSelection.StateFilePath;
-        var hasStateFilePathChanged = false;
+        var hasStateFilePathChanged = HasStateFilePathChanged(
+            previousStateFilePath,
+            currentStateFilePath);
 
         if (!string.IsNullOrWhiteSpace(currentStateFilePath))
         {
-            if (!string.IsNullOrWhiteSpace(nextStateFilePath)
-                && !string.Equals(nextStateFilePath, currentStateFilePath, StringComparison.OrdinalIgnoreCase))
+            if (hasStateFilePathChanged)
             {
                 _cachedAllPhasesContexts.Clear();
-                hasStateFilePathChanged = true;
             }
 
             nextStateFilePath = currentStateFilePath;
@@ -80,6 +80,22 @@ internal sealed class PhaseContextLoadController
             context ?? new PhaseVisualizerContext(),
             nextStateFilePath,
             hasStateFilePathChanged);
+    }
+
+    internal static bool HasStateFilePathChanged(
+        string? previousStateFilePath,
+        string? currentStateFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(previousStateFilePath)
+            || string.IsNullOrWhiteSpace(currentStateFilePath))
+        {
+            return false;
+        }
+
+        return !string.Equals(
+            previousStateFilePath,
+            currentStateFilePath,
+            StringComparison.OrdinalIgnoreCase);
     }
 }
 
